@@ -91,6 +91,10 @@ export function useEnabledAutomations() {
     }
     const autoPickBanGroups = getEnabledAutoSelectGroups(autoSelectOptions, 'pick-or-ban')
     const autoTradeGroups = getEnabledAutoSelectGroups(autoSelectOptions, 'trade')
+    const championSwapFriendGroups = getEnabledAutoSelectGroups(
+      autoSelectOptions,
+      'champion-swap-friend'
+    )
 
     const addAutoSelectAutomation = (
       id: string,
@@ -131,6 +135,12 @@ export function useEnabledAutomations() {
       'titlebar.automation.items.autoTrade',
       'automation.champ-select.pick.bench-handle-trade',
       autoTradeGroups
+    )
+    addAutoSelectAutomation(
+      'champion-swap-friend',
+      'titlebar.automation.items.championSwapFriend',
+      'automation.champ-select.champion-swap.enabled',
+      championSwapFriendGroups
     )
 
     const configuredChampionCount = countConfiguredChampions(

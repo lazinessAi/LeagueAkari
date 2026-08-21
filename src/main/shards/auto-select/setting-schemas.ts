@@ -24,7 +24,9 @@ const pickChampionConfigSchema = z.object({
   showIntent: z.boolean(),
   benchSelectFirstAvailableChampion: z.boolean(),
   benchSwapAccumulatedDelaySeconds: z.number(),
-  benchHandleTradeEnabled: z.boolean()
+  benchHandleTradeEnabled: z.boolean(),
+  acceptChampionSwapFromFriendsEnabled: z.boolean(),
+  championSwapFriendWhitelist: z.array(z.object({ summonerId: z.number(), name: z.string() }))
 })
 
 const banChampionConfigSchema = z.object({

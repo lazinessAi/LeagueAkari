@@ -847,6 +847,30 @@ const targetDefinitions = [
     descriptionKey: 'automation.champSelect.pick.benchHandleTradeEnabled.description'
   },
   {
+    id: 'automation.champ-select.champion-swap',
+    route: { name: 'automation', section: 'auto-select' },
+    parentId: 'automation.champ-select',
+    terminalId: 'automation.champ-select',
+    labelKey: 'automation.champSelect.championSwap.title',
+    searchable: false
+  },
+  {
+    id: 'automation.champ-select.champion-swap.enabled',
+    route: { name: 'automation', section: 'auto-select' },
+    parentId: 'automation.champ-select.champion-swap',
+    fallbackId: 'automation.champ-select',
+    labelKey: 'automation.champSelect.championSwap.enabled.label',
+    descriptionKey: 'automation.champSelect.championSwap.enabled.description'
+  },
+  {
+    id: 'automation.champ-select.champion-swap.friends',
+    route: { name: 'automation', section: 'auto-select' },
+    parentId: 'automation.champ-select.champion-swap',
+    fallbackId: 'automation.champ-select',
+    labelKey: 'automation.champSelect.championSwap.friends.label',
+    descriptionKey: 'automation.champSelect.championSwap.friends.description'
+  },
+  {
     id: 'automation.champ-select.ban',
     route: { name: 'automation', section: 'auto-select' },
     parentId: 'automation.champ-select',
@@ -1187,6 +1211,12 @@ function getAutoSelectPayload(
     targetId.startsWith('automation.champ-select.ban.')
   ) {
     return groupId ? { tab: 'ban', groupId } : { tab: 'ban' }
+  }
+  if (
+    targetId === 'automation.champ-select.champion-swap' ||
+    targetId.startsWith('automation.champ-select.champion-swap.')
+  ) {
+    return groupId ? { tab: 'champion-swap', groupId } : { tab: 'champion-swap' }
   }
 
   return undefined

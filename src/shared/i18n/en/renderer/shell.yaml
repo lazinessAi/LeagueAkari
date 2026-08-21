@@ -120,6 +120,7 @@ titlebar:
       aramTeamSide: Automatic map-side message
       autoPickBan: Automatic champion selection and banning
       autoTrade: Automatic champion trade handling
+      championSwapFriend: Accept champion swaps from friends
       autoChampConfig: Automatic champion setup
       autoReply: Automatic reply
       scheduledInvitation: Scheduled friend invitation

@@ -2,12 +2,15 @@ import type { AkariAutoSelectGroup } from '@shared/shards/akari-api'
 import { isAutoSelectGroupSupportedOnSgpServer } from '@shared/shards/akari-api'
 import type { BanChampionConfig, PickChampionConfig } from '@shared/shards/auto-select'
 
-export type AutoSelectAutomationKind = 'pick-or-ban' | 'trade'
+export type AutoSelectAutomationKind = 'pick-or-ban' | 'trade' | 'champion-swap-friend'
 
 type AutoSelectGroupAvailability = Pick<AkariAutoSelectGroup, 'groupId' | 'supportedSgpServers'>
 type AutoSelectPickAutomationConfig = Pick<
   PickChampionConfig,
-  'enabled' | 'benchHandleTradeEnabled'
+  | 'enabled'
+  | 'benchHandleTradeEnabled'
+  | 'acceptChampionSwapFromFriendsEnabled'
+  | 'championSwapFriendWhitelist'
 >
 type AutoSelectBanAutomationConfig = Pick<BanChampionConfig, 'enabled'>
 
@@ -37,6 +40,13 @@ export function getEnabledAutoSelectGroups(
         )
       case 'trade':
         return pickConfig[group.groupId]?.benchHandleTradeEnabled === true
+      case 'champion-swap-friend': {
+        const config = pickConfig[group.groupId]
+        return (
+          config?.acceptChampionSwapFromFriendsEnabled === true &&
+          (config?.championSwapFriendWhitelist?.length ?? 0) > 0
+        )
+      }
     }
   })
 }

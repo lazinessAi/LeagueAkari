@@ -41,6 +41,7 @@ auto-select-main:
   bench-swap: 即将在 {{seconds}} 秒后交换 {{champion}}
   accept-champion-swap: 将在 {{seconds}} 秒后接受交换请求 {{champion}}
   decline-champion-swap: 将在 {{seconds}} 秒后拒绝交换请求 {{champion}}
+  accept-champion-swap-from-friend: 已接受来自好友 {{name}} 的英雄交换 {{champion}}
   show-ban: 将在 {{seconds}} 秒后预禁用 {{champion}}
   complete-ban: 将在 {{seconds}} 秒后完成禁用 {{champion}}
   show-pick: 将在 {{seconds}} 秒后亮出 {{champion}}

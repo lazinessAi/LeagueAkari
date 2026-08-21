@@ -404,6 +404,107 @@
             />
           </SettingsRow>
         </NTabPane>
+
+        <NTabPane
+          v-if="currentGroup.groupId === 'aram'"
+          name="champion-swap"
+          :tab="t('automation.champSelect.championSwap.title')"
+        >
+          <SettingsRow
+            setting-id="automation.champ-select.champion-swap.enabled"
+            :label="t('automation.champSelect.championSwap.enabled.label')"
+            :label-description="t('automation.champSelect.championSwap.enabled.description')"
+            :label-width="260"
+          >
+            <NSwitch
+              size="small"
+              :value="currentPickConfig.acceptChampionSwapFromFriendsEnabled"
+              @update:value="
+                (val) =>
+                  as.setPickConfig(currentGroup!.groupId, {
+                    acceptChampionSwapFromFriendsEnabled: val
+                  })
+              "
+            />
+          </SettingsRow>
+
+          <SettingsRow
+            v-if="currentPickConfig.acceptChampionSwapFromFriendsEnabled"
+            setting-id="automation.champ-select.champion-swap.friends"
+            :label="t('automation.champSelect.championSwap.friends.label')"
+            :label-description="t('automation.champSelect.championSwap.friends.description')"
+            :label-width="260"
+            control-full-line
+            align="start"
+          >
+            <div class="w-full">
+              <div
+                v-if="!lcs.isConnected"
+                class="flex h-20 items-center justify-center rounded-md bg-black/5 p-2 text-center text-[13px] text-black/50 dark:bg-white/5 dark:text-white/50"
+              >
+                <span>{{ t('automation.champSelect.championSwap.friends.unavailable') }}</span>
+              </div>
+              <div v-else>
+                <NInput
+                  :value="friendSearchInput"
+                  clearable
+                  size="small"
+                  :placeholder="t('automation.champSelect.championSwap.friends.searchPlaceholder')"
+                  class="mb-2 max-w-72"
+                  @update:value="handleFriendSearchUpdate"
+                  @compositionstart="handleFriendSearchCompositionStart"
+                  @compositionend="handleFriendSearchCompositionEnd"
+                >
+                  <template #prefix>
+                    <NIcon><SearchIcon /></NIcon>
+                  </template>
+                </NInput>
+
+                <NScrollbar class="max-h-80">
+                  <div class="space-y-1.5 pr-1">
+                    <div
+                      v-for="friend in filteredSortedFriends"
+                      :key="friend.puuid"
+                      class="flex items-center gap-3 rounded-md border border-black/10 py-1.5 pr-4 pl-2.5 dark:border-white/10"
+                    >
+                      <div class="relative">
+                        <LcuImage
+                          class="size-8 rounded-full"
+                          :src="profileIconUri(friend.icon || 29)"
+                        />
+                        <div
+                          class="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border-2 border-white dark:border-neutral-900"
+                          :class="{
+                            'bg-green-500': friend.availability === 'chat',
+                            'bg-cyan-500': friend.availability === 'dnd',
+                            'bg-red-500': friend.availability === 'away',
+                            'bg-gray-400': friend.availability === 'offline'
+                          }"
+                        ></div>
+                      </div>
+                      <div class="flex min-w-0 flex-1 items-end gap-1">
+                        <div class="truncate text-[13px] font-medium">{{ friend.gameName }}</div>
+                        <div class="truncate text-xs text-black/60 dark:text-white/60">
+                          #{{ friend.gameTag }}
+                        </div>
+                      </div>
+                      <NCheckbox
+                        :checked="isChampionSwapFriend(friend.summonerId)"
+                        @update:checked="() => toggleChampionSwapFriend(friend)"
+                      />
+                    </div>
+                    <div
+                      v-if="filteredSortedFriends.length === 0"
+                      class="py-6 text-center text-[13px] text-black/50 dark:text-white/50"
+                    >
+                      <span>{{ t('automation.champSelect.championSwap.friends.noFriends') }}</span>
+                    </div>
+                  </div>
+                </NScrollbar>
+              </div>
+            </div>
+          </SettingsRow>
+        </NTabPane>
       </NTabs>
 
       <!-- 一般来说这里不会抵达 -->
@@ -422,29 +523,38 @@ import SettingsRow from '@main-window/settings-navigation/NavigableSettingsRow.v
 import LcuImage from '@renderer-shared/components/LcuImage.vue'
 import TooltipWithIcon from '@renderer-shared/components/TooltipWithIcon.vue'
 import PositionIcon from '@renderer-shared/components/icons/position-icons/PositionIcon.vue'
+import { useCompositionAwareInput } from '@renderer-shared/composables/useCompositionAwareInput'
 import { useInstance } from '@renderer-shared/shards'
 import { useAppCommonStore } from '@renderer-shared/shards/app-common/store'
 import { AutoSelectRenderer } from '@renderer-shared/shards/auto-select'
 import { useAutoSelectStore } from '@renderer-shared/shards/auto-select/store'
+import { useLeagueClientStore } from '@renderer-shared/shards/league-client/store'
+import { profileIconUri } from '@renderer-shared/shards/league-client/game-data-assets'
 import { useSgpStore } from '@renderer-shared/shards/sgp/store'
 import { isAutoSelectGroupSupportedOnSgpServer } from '@shared/shards/akari-api'
-import { Checkmark as CheckmarkIcon } from '@vicons/carbon'
+import type { Friend } from '@shared/types/league-client/chat'
+import { Checkmark as CheckmarkIcon, Search as SearchIcon } from '@vicons/carbon'
 import { useTranslation } from 'i18next-vue'
 import {
   NAlert,
   NButton,
+  NCheckbox,
   NCollapseTransition,
   NFlex,
   NIcon,
+  NInput,
   NInputNumber,
   NRadio,
   NRadioGroup,
+  NScrollbar,
   NSwitch,
   NTabPane,
   NTabs,
   NTooltip
 } from 'naive-ui'
 import { computed, nextTick, ref, watch } from 'vue'
+
+import { useSelfHostedLcuDataStore } from '@main-window/shards/self-hosted-lcu-data/store'
 
 import {
   AUTO_SELECT_NAVIGATION_STEP_KEY,
@@ -458,6 +568,78 @@ const app = useAppCommonStore()
 const as = useInstance(AutoSelectRenderer)
 const as2 = useAutoSelectStore()
 const sgp = useSgpStore()
+const lcs = useLeagueClientStore()
+const shs = useSelfHostedLcuDataStore()
+
+const FRIEND_PRIORITY: Record<string, number> = {
+  chat: 0,
+  dnd: 1,
+  away: 1,
+  offline: 2
+}
+
+const {
+  inputValue: friendSearchInput,
+  committedValue: friendSearchQuery,
+  handleUpdateValue: handleFriendSearchUpdate,
+  handleCompositionStart: handleFriendSearchCompositionStart,
+  handleCompositionEnd: handleFriendSearchCompositionEnd
+} = useCompositionAwareInput()
+
+const sortedFriends = computed(() => {
+  return shs.friends.toSorted((a, b) => {
+    const pa = FRIEND_PRIORITY[a.availability] ?? 3
+    const pb = FRIEND_PRIORITY[b.availability] ?? 3
+
+    if (pa !== pb) {
+      return pa - pb
+    }
+
+    return a.gameName.localeCompare(b.gameName)
+  })
+})
+
+const filteredSortedFriends = computed(() => {
+  const keyword = friendSearchQuery.value.trim().toLowerCase()
+
+  if (!keyword) {
+    return sortedFriends.value
+  }
+
+  return sortedFriends.value.filter((friend) => {
+    return (
+      (friend.gameName?.toLowerCase() || '').includes(keyword) ||
+      (friend.gameTag?.toLowerCase() || '').includes(keyword)
+    )
+  })
+})
+
+const isChampionSwapFriend = (summonerId: number) => {
+  return (currentPickConfig.value?.championSwapFriendWhitelist ?? []).some(
+    (entry) => entry.summonerId === summonerId
+  )
+}
+
+const toggleChampionSwapFriend = (friend: Friend) => {
+  if (!currentGroup.value) {
+    return
+  }
+
+  const current = currentPickConfig.value?.championSwapFriendWhitelist ?? []
+
+  if (isChampionSwapFriend(friend.summonerId)) {
+    as.setPickConfig(currentGroup.value.groupId, {
+      championSwapFriendWhitelist: current.filter((entry) => entry.summonerId !== friend.summonerId)
+    })
+  } else {
+    as.setPickConfig(currentGroup.value.groupId, {
+      championSwapFriendWhitelist: [
+        ...current,
+        { summonerId: friend.summonerId, name: `${friend.gameName} #${friend.gameTag}` }
+      ]
+    })
+  }
+}
 
 const currentGroupId = ref('ranked')
 const banPick = ref('pick')
@@ -511,6 +693,17 @@ const currentGroup = computed(() => {
 const currentPickConfig = computed(() => {
   return currentGroup.value ? as2.settings.pickConfig[currentGroup.value.groupId] : undefined
 })
+
+// “英雄交换” tab 仅在大乱斗类分组存在, 切换到其它分组时若停留在该 tab 会显示空白,
+// 因此回退到第一个 tab (pick)。
+watch(
+  () => currentGroup.value?.groupId,
+  (groupId) => {
+    if (banPick.value === 'champion-swap' && groupId !== 'aram') {
+      banPick.value = 'pick'
+    }
+  }
+)
 
 const currentBanConfig = computed(() => {
   return currentGroup.value ? as2.settings.banConfig[currentGroup.value.groupId] : undefined

@@ -172,6 +172,17 @@ automation:
       delaySeconds:
         label: Delay (s)
         description: The automatic ban process will be planned according to the preset delay, including show, lock-in, or handle swap. Each stage will not exceed the system limit.
+    championSwap:
+      title: Champion Swap
+      enabled:
+        label: Accept Swaps From Friends
+        description: When enabled, a champion swap from a whitelisted friend is accepted immediately and unconditionally, regardless of your expected champions. Has no effect while the whitelist is empty.
+      friends:
+        label: Friend Whitelist
+        description: Select the friends whose champion swaps may be auto-accepted.
+        searchPlaceholder: Search friend name or tag
+        unavailable: Not connected to the client, unable to load the friends list.
+        noFriends: No friends found
   misc:
     autoReply:
       updated: Updated

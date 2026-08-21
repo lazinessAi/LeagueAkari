@@ -37,23 +37,46 @@ export class AutoSelectTradeController {
         }
 
         const pickConfig = state.activeGroupConfig
-        const expected = state.expectedSwaps
 
-        if (
-          !pickConfig ||
-          !pickConfig.pick.benchHandleTradeEnabled ||
-          !expected ||
-          !state.ongoingChampionSwapCreatedAt
-        ) {
-          return null
-        }
-
-        if (!state.ongoingChampionSwap) {
+        if (!pickConfig || !state.ongoingChampionSwap || !state.ongoingChampionSwapCreatedAt) {
           return null
         }
 
         const tradeId = state.ongoingChampionSwap.id
         const herChampionId = state.ongoingChampionSwap.requesterChampionId
+
+        // 好友信任覆盖: 无条件立即接受来自白名单好友的英雄交换,
+        // 独立于 benchHandleTradeEnabled, 且不依赖期望英雄列表。
+        // 发起人身份通过 requesterChampionId 在 myTeam 中定位 (大乱斗英雄唯一)。
+        if (
+          pickConfig.pick.acceptChampionSwapFromFriendsEnabled &&
+          pickConfig.pick.championSwapFriendWhitelist.length > 0
+        ) {
+          const requester = state.myTeam?.find((member) => member.championId === herChampionId)
+
+          const friend = requester
+            ? pickConfig.pick.championSwapFriendWhitelist.find(
+                (entry) => entry.summonerId === requester.summonerId
+              )
+            : undefined
+
+          if (friend) {
+            return {
+              action: 'accept',
+              delayMs: 0,
+              requesterChampionId: herChampionId,
+              tradeId: tradeId,
+              fromFriend: true,
+              requesterName: friend.name
+            }
+          }
+        }
+
+        const expected = state.expectedSwaps
+
+        if (!pickConfig.pick.benchHandleTradeEnabled || !expected) {
+          return null
+        }
 
         const delayMs =
           pickConfig.pick.delaySeconds * 1e3 - (Date.now() - state.ongoingChampionSwapCreatedAt)
@@ -70,7 +93,8 @@ export class AutoSelectTradeController {
             action: 'decline',
             delayMs: Math.min(delayMs, timeLeft),
             requesterChampionId: herChampionId,
-            tradeId: tradeId
+            tradeId: tradeId,
+            fromFriend: false
           }
         }
 
@@ -86,7 +110,8 @@ export class AutoSelectTradeController {
             action: 'accept',
             delayMs: Math.min(timeLeft, Math.max(0, delayMs)),
             requesterChampionId: herChampionId,
-            tradeId: tradeId
+            tradeId: tradeId,
+            fromFriend: false
           }
         }
 
@@ -94,7 +119,8 @@ export class AutoSelectTradeController {
           action: 'decline',
           delayMs: Math.min(timeLeft, Math.max(0, delayMs)),
           requesterChampionId: herChampionId,
-          tradeId: tradeId
+          tradeId: tradeId,
+          fromFriend: false
         }
       },
       { equals: compareStructural }
@@ -125,12 +151,21 @@ export class AutoSelectTradeController {
           state.delayedChampionSwapTask.tradeId !== tradeId ||
           state.delayedChampionSwapTask.requesterChampionId !== requesterChampionId
         ) {
-          this._localMessage.send(
-            i18next.t(`auto-select-main.${action}-champion-swap`, {
-              seconds: (delayMs / 1e3).toFixed(1),
-              champion: this._actionExecutor.championNameWithId(requesterChampionId)
-            })
-          )
+          if (context.fromFriend) {
+            this._localMessage.send(
+              i18next.t('auto-select-main.accept-champion-swap-from-friend', {
+                name: context.requesterName,
+                champion: this._actionExecutor.championNameWithId(requesterChampionId)
+              })
+            )
+          } else {
+            this._localMessage.send(
+              i18next.t(`auto-select-main.${action}-champion-swap`, {
+                seconds: (delayMs / 1e3).toFixed(1),
+                champion: this._actionExecutor.championNameWithId(requesterChampionId)
+              })
+            )
+          }
         }
 
         if (action === 'accept') {

@@ -14,10 +14,30 @@ const options: EnabledAutoSelectGroupsOptions = {
     { groupId: 'other-server', supportedSgpServers: ['kr'] }
   ],
   pickConfig: {
-    global: { enabled: true, benchHandleTradeEnabled: false },
-    'current-server': { enabled: false, benchHandleTradeEnabled: true },
-    'other-server': { enabled: true, benchHandleTradeEnabled: true },
-    'removed-from-catalog': { enabled: true, benchHandleTradeEnabled: true }
+    global: {
+      enabled: true,
+      benchHandleTradeEnabled: false,
+      acceptChampionSwapFromFriendsEnabled: false,
+      championSwapFriendWhitelist: []
+    },
+    'current-server': {
+      enabled: false,
+      benchHandleTradeEnabled: true,
+      acceptChampionSwapFromFriendsEnabled: false,
+      championSwapFriendWhitelist: []
+    },
+    'other-server': {
+      enabled: true,
+      benchHandleTradeEnabled: true,
+      acceptChampionSwapFromFriendsEnabled: false,
+      championSwapFriendWhitelist: []
+    },
+    'removed-from-catalog': {
+      enabled: true,
+      benchHandleTradeEnabled: true,
+      acceptChampionSwapFromFriendsEnabled: false,
+      championSwapFriendWhitelist: []
+    }
   },
   banConfig: {
     global: { enabled: false },
@@ -42,6 +62,40 @@ describe('automation status model', () => {
       getEnabledAutoSelectGroups({ ...options, sgpServerId: '' }, 'pick-or-ban').map(
         (group) => group.groupId
       )
+    ).toEqual(['global'])
+  })
+
+  test('counts champion-swap-friend groups only when enabled with a non-empty whitelist', () => {
+    const swapOptions: EnabledAutoSelectGroupsOptions = {
+      ...options,
+      sgpServerId: '',
+      pickConfig: {
+        // enabled + non-empty whitelist -> qualifies
+        global: {
+          enabled: false,
+          benchHandleTradeEnabled: false,
+          acceptChampionSwapFromFriendsEnabled: true,
+          championSwapFriendWhitelist: [{ summonerId: 1, name: 'a' }]
+        },
+        // enabled + empty whitelist -> does not qualify
+        'current-server': {
+          enabled: false,
+          benchHandleTradeEnabled: false,
+          acceptChampionSwapFromFriendsEnabled: true,
+          championSwapFriendWhitelist: []
+        },
+        // disabled + non-empty whitelist -> does not qualify
+        'other-server': {
+          enabled: false,
+          benchHandleTradeEnabled: false,
+          acceptChampionSwapFromFriendsEnabled: false,
+          championSwapFriendWhitelist: [{ summonerId: 2, name: 'b' }]
+        }
+      }
+    }
+
+    expect(
+      getEnabledAutoSelectGroups(swapOptions, 'champion-swap-friend').map((group) => group.groupId)
     ).toEqual(['global'])
   })
 

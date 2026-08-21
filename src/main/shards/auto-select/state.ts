@@ -51,6 +51,15 @@ export interface PickChampionConfig {
   benchSelectFirstAvailableChampion: boolean
   benchSwapAccumulatedDelaySeconds: number
   benchHandleTradeEnabled: boolean
+
+  // bench mode only: 无条件接受来自指定好友的英雄交换
+  acceptChampionSwapFromFriendsEnabled: boolean
+  championSwapFriendWhitelist: ChampionSwapFriend[]
+}
+
+export interface ChampionSwapFriend {
+  summonerId: number
+  name: string
 }
 
 export interface BanChampionConfig {
@@ -110,7 +119,9 @@ export class AutoSelectSettings {
       strategy: 'show-and-lock-in',
       benchHandleTradeEnabled: false,
       benchSelectFirstAvailableChampion: false,
-      benchSwapAccumulatedDelaySeconds: 2.9
+      benchSwapAccumulatedDelaySeconds: 2.9,
+      acceptChampionSwapFromFriendsEnabled: false,
+      championSwapFriendWhitelist: []
     }
   }
 

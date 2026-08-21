@@ -172,6 +172,17 @@ automation:
       delaySeconds:
         label: 延时 (s)
         description: 自动禁用相关功能将根据预设的延时规划时间，包括亮出、锁定或处理交换等。该功能会将延时强制限定在本阶段可操作的最晚时间点
+    championSwap:
+      title: 英雄交换
+      enabled:
+        label: 接受好友的英雄交换
+        description: 开启后，当白名单中的好友与你发起英雄交换时，将无条件立即接受，不受意向英雄设置影响。白名单为空时此功能不生效。
+      friends:
+        label: 好友白名单
+        description: 勾选允许自动接受其英雄交换的好友
+        searchPlaceholder: 搜索好友名称或标签
+        unavailable: 未连接到客户端，无法加载好友列表
+        noFriends: 暂无好友
   misc:
     autoReply:
       updated: 已更新
