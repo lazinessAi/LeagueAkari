@@ -1,5 +1,5 @@
 <template>
-  <div class="@container overflow-hidden rounded border border-solid" :class="tone.borderClass">
+  <div class="@container overflow-x-auto rounded border border-solid" :class="tone.borderClass">
     <!-- header -->
     <div class="box-border flex h-8 items-center gap-4 p-2 text-xs" :class="tone.headerClass">
       <!-- team name -->
@@ -129,7 +129,7 @@
       class="box-border flex h-12 items-center border-t border-r-0 border-b-0 border-l-0 border-solid border-t-black/5 px-2 py-1 dark:border-t-white/5"
     >
       <!-- name line -->
-      <div class="flex min-w-0 flex-1 items-center gap-1">
+      <div class="flex min-w-44 flex-1 items-center gap-1">
         <!-- left champion icon -->
         <NPopover placement="right">
           <template #trigger>
@@ -274,15 +274,6 @@
           />
         </div>
 
-        <!-- cs -->
-        <div v-else-if="column.name === 'cs'" :class="column.class">
-          <div class="text-xs">{{ participant.cs }} {{ t('matchCard.teamTable.cs') }}</div>
-          <div class="text-[11px] text-black/60 dark:text-white/60">
-            {{ (participant.cs / (basicInfo.gameDuration / 60)).toFixed(1) }}
-            {{ t('matchCard.teamTable.perMinuteSuffix') }}
-          </div>
-        </div>
-
         <!-- gold -->
         <div v-else-if="column.name === 'gold'" :class="column.class">
           <div class="text-xs">{{ (participant.goldEarned / 1000).toFixed(2) }}k</div>
@@ -362,7 +353,6 @@ const extraColumns = computed<ColumnConfig[]>(() => {
         { name: 'augments', class: 'min-w-[7.5rem] flex gap-0.5 justify-center' },
         { name: 'damage-gold-efficiency', class: 'min-w-18 text-center' },
         { name: 'damage', class: 'min-w-32 flex gap-2 justify-center' },
-        { name: 'cs', class: 'hidden @[740px]:block min-w-[4.5rem] text-center' },
         { name: 'gold', class: 'hidden @[700px]:block min-w-[4.5rem] text-xs text-center' },
         { name: 'items', class: 'w-40 flex gap-0.5 justify-center' }
       ]
@@ -372,7 +362,6 @@ const extraColumns = computed<ColumnConfig[]>(() => {
         { name: 'augments', class: 'min-w-[7.25rem] flex gap-0.5 justify-center' },
         { name: 'damage-gold-efficiency', class: 'min-w-18 text-center' },
         { name: 'damage', class: 'min-w-[7.5rem] flex gap-2 justify-center' },
-        { name: 'cs', class: 'hidden @[740px]:block min-w-[4.5rem] text-center' },
         { name: 'gold', class: 'hidden @[700px]:block min-w-[4.5rem] text-xs text-center' },
         { name: 'items', class: 'min-w-40 flex gap-0.5 justify-center' }
       ]
@@ -381,7 +370,6 @@ const extraColumns = computed<ColumnConfig[]>(() => {
         { name: 'kda', class: 'min-w-[6.5rem] text-center' },
         { name: 'damage-gold-efficiency', class: 'min-w-18 text-center' },
         { name: 'damage', class: 'min-w-32 flex gap-2 justify-center' },
-        { name: 'cs', class: 'hidden @[700px]:block w-[4.5rem] text-center' },
         { name: 'gold', class: 'min-w-[4.5rem] text-xs text-center' },
         {
           name: 'items',
