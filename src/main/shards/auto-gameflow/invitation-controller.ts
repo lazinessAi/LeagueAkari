@@ -26,9 +26,19 @@ export class AutoGameflowInvitationController {
           settings.autoHandleInvitationsEnabled,
           settings.invitationHandlingStrategies,
           settings.rejectInvitationWhenAway,
+          settings.onlyAcceptInvitationFromFriends,
+          settings.acceptInvitationFriendWhitelist,
           leagueClient.data.chat.me?.availability
         ] as const,
-      async ([invitations, enabled, strategies, rejectWhenAway, availability]) => {
+      async ([
+        invitations,
+        enabled,
+        strategies,
+        rejectWhenAway,
+        onlyFromFriends,
+        friendWhitelist,
+        availability
+      ]) => {
         if (!enabled || invitations.length === 0) {
           return
         }
@@ -50,23 +60,33 @@ export class AutoGameflowInvitationController {
           return
         }
 
+        const whitelistedSummonerIds = new Set(friendWhitelist.map((entry) => entry.summonerId))
+
+        // 好友白名单闸门: 仅收窄 accept。开启后, 仅当邀请人在白名单内才允许自动接受,
+        // 否则将该邀请的 accept 降级为 ignore, 不影响 decline / ignore 行为。
+        const passesFriendGate = (invitation: (typeof availableInvitations)[number]) => {
+          if (!onlyFromFriends) {
+            return true
+          }
+
+          return whitelistedSummonerIds.has(invitation.fromSummonerId)
+        }
+
         // 先找到任意一个符合要求的, decline 或 accept 或 ignore
         const availableStrategies = availableInvitations
           .map((invitation) => {
-            const strategy = strategies[invitation.gameConfig.inviteGameType]
+            const strategy =
+              strategies[invitation.gameConfig.inviteGameType] ||
+              strategies['<DEFAULT>'] ||
+              'ignore'
 
-            if (strategy) {
-              return {
-                id: invitation.invitationId,
-                inviteGameType: invitation.gameConfig.inviteGameType,
-                strategy: strategies[invitation.gameConfig.inviteGameType]
-              }
-            }
+            const effectiveStrategy =
+              strategy === 'accept' && !passesFriendGate(invitation) ? 'ignore' : strategy
 
             return {
               id: invitation.invitationId,
               inviteGameType: invitation.gameConfig.inviteGameType,
-              strategy: strategies['<DEFAULT>'] || 'ignore'
+              strategy: effectiveStrategy
             }
           })
           .toSorted((a, b) => {

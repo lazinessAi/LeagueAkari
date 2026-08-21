@@ -118,6 +118,18 @@ export class AutoGameflowRenderer implements IAkariShardInitDispose {
     return this._settingUtils.set(MAIN_SHARD_NAMESPACE, 'invitationHandlingStrategies', strategies)
   }
 
+  setOnlyAcceptInvitationFromFriends(enabled: boolean) {
+    return this._settingUtils.set(MAIN_SHARD_NAMESPACE, 'onlyAcceptInvitationFromFriends', enabled)
+  }
+
+  setAcceptInvitationFriendWhitelist(whitelist: { summonerId: number; name: string }[]) {
+    return this._settingUtils.set(
+      MAIN_SHARD_NAMESPACE,
+      'acceptInvitationFriendWhitelist',
+      whitelist
+    )
+  }
+
   setAutoSendARAMTeamSideEnabled(enabled: boolean) {
     return this._settingUtils.set(MAIN_SHARD_NAMESPACE, 'autoSendARAMTeamSideEnabled', enabled)
   }

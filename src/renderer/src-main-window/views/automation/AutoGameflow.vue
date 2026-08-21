@@ -315,6 +315,103 @@
               </NPopselect>
             </NFlex>
           </SettingsRow>
+          <SettingsRow
+            setting-id="automation.gameflow.invitations.only-from-friends"
+            :label="t('automation.gameflow.onlyAcceptInvitationFromFriends.label')"
+            :label-description="
+              t('automation.gameflow.onlyAcceptInvitationFromFriends.description')
+            "
+            :label-width="260"
+          >
+            <NSwitch
+              :value="store.settings.onlyAcceptInvitationFromFriends"
+              @update:value="(val) => shard.setOnlyAcceptInvitationFromFriends(val)"
+              size="small"
+            />
+          </SettingsRow>
+          <SettingsRow
+            v-if="store.settings.onlyAcceptInvitationFromFriends"
+            setting-id="automation.gameflow.invitations.friend-whitelist"
+            :label="t('automation.gameflow.acceptInvitationFriendWhitelist.label')"
+            :label-description="
+              t('automation.gameflow.acceptInvitationFriendWhitelist.description')
+            "
+            :label-width="260"
+            align="start"
+          >
+            <div class="w-full max-w-100">
+              <div
+                v-if="!lcs.isConnected"
+                class="flex h-20 items-center justify-center rounded-md bg-black/5 p-2 text-center text-[13px] text-black/50 dark:bg-white/5 dark:text-white/50"
+              >
+                <span>{{
+                  t('automation.gameflow.acceptInvitationFriendWhitelist.unavailable')
+                }}</span>
+              </div>
+              <div v-else>
+                <NInput
+                  :value="friendSearchInput"
+                  clearable
+                  size="small"
+                  :placeholder="
+                    t('automation.gameflow.acceptInvitationFriendWhitelist.searchPlaceholder')
+                  "
+                  class="mb-2"
+                  @update:value="handleFriendSearchUpdate"
+                  @compositionstart="handleFriendSearchCompositionStart"
+                  @compositionend="handleFriendSearchCompositionEnd"
+                >
+                  <template #prefix>
+                    <NIcon><SearchIcon /></NIcon>
+                  </template>
+                </NInput>
+
+                <NScrollbar class="max-h-80">
+                  <div class="space-y-1.5 pr-1">
+                    <div
+                      v-for="friend in filteredSortedFriends"
+                      :key="friend.puuid"
+                      class="flex items-center gap-3 rounded-md border border-black/10 py-1.5 pr-4 pl-2.5 dark:border-white/10"
+                    >
+                      <div class="relative">
+                        <LcuImage
+                          class="size-8 rounded-full"
+                          :src="profileIconUri(friend.icon || 29)"
+                        />
+                        <div
+                          class="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border-2 border-white dark:border-neutral-900"
+                          :class="{
+                            'bg-green-500': friend.availability === 'chat',
+                            'bg-cyan-500': friend.availability === 'dnd',
+                            'bg-red-500': friend.availability === 'away',
+                            'bg-gray-400': friend.availability === 'offline'
+                          }"
+                        ></div>
+                      </div>
+                      <div class="flex min-w-0 flex-1 items-end gap-1">
+                        <div class="truncate text-[13px] font-medium">{{ friend.gameName }}</div>
+                        <div class="truncate text-xs text-black/60 dark:text-white/60">
+                          #{{ friend.gameTag }}
+                        </div>
+                      </div>
+                      <NCheckbox
+                        :checked="isWhitelisted(friend.summonerId)"
+                        @update:checked="() => toggleWhitelist(friend)"
+                      />
+                    </div>
+                    <div
+                      v-if="filteredSortedFriends.length === 0"
+                      class="py-6 text-center text-[13px] text-black/50 dark:text-white/50"
+                    >
+                      <span>{{
+                        t('automation.gameflow.acceptInvitationFriendWhitelist.noFriends')
+                      }}</span>
+                    </div>
+                  </div>
+                </NScrollbar>
+              </div>
+            </div>
+          </SettingsRow>
         </SettingsSection>
 
         <SettingsSection setting-id="automation.gameflow.aram-team-side">
@@ -365,18 +462,26 @@
 </template>
 
 <script setup lang="ts">
+import LcuImage from '@renderer-shared/components/LcuImage.vue'
 import SettingsRow from '@main-window/settings-navigation/NavigableSettingsRow.vue'
 import SettingsSection from '@main-window/settings-navigation/NavigableSettingsSection.vue'
 import TooltipWithIcon from '@renderer-shared/components/TooltipWithIcon.vue'
 import aramTeamSideMessageImage from '@renderer-shared/assets/automation/aram-team-side-message.webp'
+import { useCompositionAwareInput } from '@renderer-shared/composables/useCompositionAwareInput'
 import { useInstance } from '@renderer-shared/shards'
 import { AutoGameflowRenderer } from '@renderer-shared/shards/auto-gameflow'
 import { useAutoGameflowStore } from '@renderer-shared/shards/auto-gameflow/store'
+import { useLeagueClientStore } from '@renderer-shared/shards/league-client/store'
+import { profileIconUri } from '@renderer-shared/shards/league-client/game-data-assets'
+import type { Friend } from '@shared/types/league-client/chat'
+import { Search as SearchIcon } from '@vicons/carbon'
 import { TranslationComponent, useTranslation } from 'i18next-vue'
 import {
   NButton,
   NCheckbox,
   NFlex,
+  NIcon,
+  NInput,
   NInputNumber,
   NPopselect,
   NRadio,
@@ -386,8 +491,77 @@ import {
 } from 'naive-ui'
 import { computed } from 'vue'
 
+import { useSelfHostedLcuDataStore } from '@main-window/shards/self-hosted-lcu-data/store'
+
 const store = useAutoGameflowStore()
 const shard = useInstance(AutoGameflowRenderer)
+
+const lcs = useLeagueClientStore()
+const shs = useSelfHostedLcuDataStore()
+
+const FRIEND_PRIORITY: Record<string, number> = {
+  chat: 0,
+  dnd: 1,
+  away: 1,
+  offline: 2
+}
+
+const {
+  inputValue: friendSearchInput,
+  committedValue: friendSearchQuery,
+  handleUpdateValue: handleFriendSearchUpdate,
+  handleCompositionStart: handleFriendSearchCompositionStart,
+  handleCompositionEnd: handleFriendSearchCompositionEnd
+} = useCompositionAwareInput()
+
+const sortedFriends = computed(() => {
+  return shs.friends.toSorted((a, b) => {
+    const pa = FRIEND_PRIORITY[a.availability] ?? 3
+    const pb = FRIEND_PRIORITY[b.availability] ?? 3
+
+    if (pa !== pb) {
+      return pa - pb
+    }
+
+    return a.gameName.localeCompare(b.gameName)
+  })
+})
+
+const filteredSortedFriends = computed(() => {
+  const keyword = friendSearchQuery.value.trim().toLowerCase()
+
+  if (!keyword) {
+    return sortedFriends.value
+  }
+
+  return sortedFriends.value.filter((friend) => {
+    return (
+      (friend.gameName?.toLowerCase() || '').includes(keyword) ||
+      (friend.gameTag?.toLowerCase() || '').includes(keyword)
+    )
+  })
+})
+
+const isWhitelisted = (summonerId: number) => {
+  return store.settings.acceptInvitationFriendWhitelist.some(
+    (entry) => entry.summonerId === summonerId
+  )
+}
+
+const toggleWhitelist = (friend: Friend) => {
+  const current = store.settings.acceptInvitationFriendWhitelist
+
+  if (isWhitelisted(friend.summonerId)) {
+    shard.setAcceptInvitationFriendWhitelist(
+      current.filter((entry) => entry.summonerId !== friend.summonerId)
+    )
+  } else {
+    shard.setAcceptInvitationFriendWhitelist([
+      ...current,
+      { summonerId: friend.summonerId, name: `${friend.gameName} #${friend.gameTag}` }
+    ])
+  }
+}
 
 const invitationStrategiesPopselectArray = computed(() => {
   return Object.keys(store.settings.invitationHandlingStrategies)

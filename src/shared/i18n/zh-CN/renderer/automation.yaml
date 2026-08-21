@@ -88,6 +88,15 @@ automation:
     rejectInvitationWhenAway:
       label: 离开时拒绝邀请
       description: 当游戏状态为离开时，将拒绝所有房间邀请
+    onlyAcceptInvitationFromFriends:
+      label: 仅接受指定好友的邀请
+      description: 开启后，仅当邀请人在下方白名单中时才会自动接受邀请（仅影响“接受”，拒绝与不处理不受影响）。白名单为空时不会自动接受任何邀请。
+    acceptInvitationFriendWhitelist:
+      label: 好友白名单
+      description: 勾选允许自动接受其邀请的好友
+      searchPlaceholder: 搜索好友
+      unavailable: 未连接到客户端，无法加载好友列表
+      noFriends: 没有找到好友
     autoSendARAMTeamSideEnabled:
       label: 发送地图位置信息
       description: 在如极地大乱斗、海克斯大乱斗等模式中，进入英雄选择时，将告知当前阵营所处地图的位置（蓝色方或红色方）

@@ -20,6 +20,8 @@ export const useAutoGameflowStore = defineStore('shard:auto-gameflow-renderer', 
     autoHandleInvitationsEnabled: false,
     autoSkipLeaderEnabled: false,
     invitationHandlingStrategies: {} as Record<string, string>,
+    onlyAcceptInvitationFromFriends: false,
+    acceptInvitationFriendWhitelist: [] as { summonerId: number; name: string }[],
     rejectInvitationWhenAway: false,
     autoSendARAMTeamSideEnabled: false,
     autoSendARAMTeamSideVisibleToTeam: true

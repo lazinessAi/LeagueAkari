@@ -88,6 +88,15 @@ automation:
     rejectInvitationWhenAway:
       label: Reject When Away
       description: Automatically rejects lobby invitations when the game status is set to Away.
+    onlyAcceptInvitationFromFriends:
+      label: Only Accept From Selected Friends
+      description: When enabled, invitations are auto-accepted only if the inviter is in the whitelist below (affects "Accept" only; Decline and Ignore are unchanged). No invitation is auto-accepted while the whitelist is empty.
+    acceptInvitationFriendWhitelist:
+      label: Friend Whitelist
+      description: Select the friends whose invitations may be auto-accepted.
+      searchPlaceholder: Search friends
+      unavailable: Not connected to the client, unable to load the friends list.
+      noFriends: No friends found
     autoSendARAMTeamSideEnabled:
       label: Send Team Side Information
       description: 'In modes like ARAM or ARAM: Mayhem, when entering champion select, the current team side (blue or red) will be notified.'

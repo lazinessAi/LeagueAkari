@@ -133,6 +133,14 @@ export class AutoGameflowMain implements IAkariShardInitDispose {
           default: this.settings.invitationHandlingStrategies,
           schema: z.record(z.string(), z.string())
         },
+        onlyAcceptInvitationFromFriends: {
+          default: this.settings.onlyAcceptInvitationFromFriends,
+          schema: z.boolean()
+        },
+        acceptInvitationFriendWhitelist: {
+          default: this.settings.acceptInvitationFriendWhitelist,
+          schema: z.array(z.object({ summonerId: z.number(), name: z.string() }))
+        },
         rejectInvitationWhenAway: {
           default: this.settings.rejectInvitationWhenAway,
           schema: z.boolean()
@@ -203,6 +211,8 @@ export class AutoGameflowMain implements IAkariShardInitDispose {
       'autoReconnectEnabled',
       'autoMatchmakingMaximumMatchDuration',
       'invitationHandlingStrategies',
+      'onlyAcceptInvitationFromFriends',
+      'acceptInvitationFriendWhitelist',
       'rejectInvitationWhenAway',
       'autoSendARAMTeamSideEnabled',
       'autoSendARAMTeamSideVisibleToTeam'

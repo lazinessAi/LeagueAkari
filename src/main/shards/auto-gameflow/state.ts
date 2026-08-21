@@ -11,6 +11,11 @@ export type AutoHonorStrategy =
 
 export type AutoMatchmakingStrategy = 'never' | 'fixed-duration' | 'estimated-duration'
 
+export interface InvitationFriendWhitelistEntry {
+  summonerId: number
+  name: string
+}
+
 export class AutoGameflowSettings {
   autoHonorEnabled: boolean = false
   autoHonorStrategy: AutoHonorStrategy = 'prefer-lobby-member'
@@ -36,6 +41,9 @@ export class AutoGameflowSettings {
   rejectInvitationWhenAway: boolean = false
 
   invitationHandlingStrategies: Record<string, string> = {}
+
+  onlyAcceptInvitationFromFriends: boolean = false
+  acceptInvitationFriendWhitelist: InvitationFriendWhitelistEntry[] = []
 
   autoSendARAMTeamSideEnabled: boolean = false
   autoSendARAMTeamSideVisibleToTeam: boolean = false
@@ -100,6 +108,14 @@ export class AutoGameflowSettings {
     this.invitationHandlingStrategies = strategies
   }
 
+  setOnlyAcceptInvitationFromFriends(yes: boolean) {
+    this.onlyAcceptInvitationFromFriends = yes
+  }
+
+  setAcceptInvitationFriendWhitelist(whitelist: InvitationFriendWhitelistEntry[]) {
+    this.acceptInvitationFriendWhitelist = whitelist
+  }
+
   setAutoSkipLeaderEnabled(enabled: boolean) {
     this.autoSkipLeaderEnabled = enabled
   }
@@ -114,7 +130,8 @@ export class AutoGameflowSettings {
 
   constructor() {
     makeAutoObservable(this, {
-      invitationHandlingStrategies: observableStruct
+      invitationHandlingStrategies: observableStruct,
+      acceptInvitationFriendWhitelist: observableStruct
     })
   }
 }
