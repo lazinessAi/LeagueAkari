@@ -1,5 +1,8 @@
 import { MatchBasicInfo } from '../../../match-history/match-basic'
-import { MatchParticipant } from '../../../match-history/participants'
+import {
+  MatchParticipant,
+  calculateDamageGoldEfficiency
+} from '../../../match-history/participants'
 import { noZero } from '../../../utils'
 import type { SingleSummaryAnalysis } from '../types/single'
 
@@ -105,7 +108,7 @@ export function computeSingleSummary(
     kda: participant.kda,
     win: participant.winResult === 'win',
     killParticipation: (participant.kills + participant.assists) / noZero(teamTotalKills),
-    damageGoldEfficiency: participant.totalDamageDealtToChampions / noZero(participant.goldEarned),
+    damageGoldEfficiency: calculateDamageGoldEfficiency(participant, teamParticipants),
     killDamageEfficiency:
       teamTotalKills === 0 || teamTotalChampionDmg === 0
         ? 1

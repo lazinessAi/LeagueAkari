@@ -12,14 +12,38 @@
       @navigate-to-summoner-by-puuid="navigateToTabByPuuid"
       @dry-run-ongoing-game="handleDryRunOngoingGame"
     />
-    <OngoingGameProvider :value="ongoingGame">
-      <OngoingGamePanel
-        :content-width="contentWidth"
-        :content-height="contentHeight"
-        @navigate-to-summoner-by-puuid="navigateToTabByPuuid"
-        @preview-game="handlePreviewGame"
-      />
-    </OngoingGameProvider>
+    <NTabs
+      v-model:value="activeTab"
+      class="ongoing-game-tabs"
+      type="line"
+      size="small"
+      :animated="false"
+    >
+      <NTabPane name="current" :tab="t('ongoingGame.tabs.current')" display-directive="show">
+        <OngoingGameProvider :value="ongoingGame">
+          <OngoingGamePanel
+            :content-width="contentWidth"
+            :content-height="panelContentHeight"
+            @navigate-to-summoner-by-puuid="navigateToTabByPuuid"
+            @preview-game="handlePreviewGame"
+          />
+        </OngoingGameProvider>
+      </NTabPane>
+
+      <NTabPane name="previous" :tab="t('ongoingGame.tabs.previous')" display-directive="show">
+        <OngoingGameProvider v-if="previousGame" :value="previousGame">
+          <OngoingGamePanel
+            :content-width="contentWidth"
+            :content-height="panelContentHeight"
+            @navigate-to-summoner-by-puuid="navigateToTabByPuuid"
+            @preview-game="handlePreviewGame"
+          />
+        </OngoingGameProvider>
+        <div v-else class="flex h-full items-center justify-center">
+          <NEmpty size="small" :description="t('ongoingGame.tabs.noPrevious')" />
+        </div>
+      </NTabPane>
+    </NTabs>
   </div>
 </template>
 
@@ -28,6 +52,7 @@ import ConnectedMatchPreviewer from '@renderer-shared/components/match-preview/C
 import OngoingGamePanel from '@renderer-shared/components/ongoing-game-panel/OngoingGamePanel.vue'
 import {
   createAkariOngoingGameProvider,
+  createAkariPreviousGameProvider,
   OngoingGameProvider
 } from '@renderer-shared/providers/ongoing-game'
 import {
@@ -38,8 +63,11 @@ import {
 import { useInstance } from '@renderer-shared/shards'
 import { useAppCommonStore } from '@renderer-shared/shards/app-common/store'
 import { OngoingGameRenderer } from '@renderer-shared/shards/ongoing-game'
+import { useOngoingGameStore } from '@renderer-shared/shards/ongoing-game/store'
 import { DraftOptions } from '@shared/shards/ongoing-game'
-import { ref, shallowRef } from 'vue'
+import { useTranslation } from 'i18next-vue'
+import { NEmpty, NTabPane, NTabs } from 'naive-ui'
+import { computed, ref, shallowRef, watch } from 'vue'
 
 import { useMainWindowAppContext } from '@main-window/context'
 import { PlayerTabsRenderer } from '@main-window/shards/player-tabs'
@@ -48,7 +76,14 @@ const { contentWidth, contentHeight } = useMainWindowAppContext()
 
 const pt = useInstance(PlayerTabsRenderer)
 const og = useInstance(OngoingGameRenderer)
+const ogStore = useOngoingGameStore()
+const { t } = useTranslation()
 const ongoingGame = createAkariOngoingGameProvider()
+const activeTab = ref<'current' | 'previous'>('current')
+const panelContentHeight = computed(() => Math.max(0, contentHeight.value - 40))
+const previousGame = computed(() => {
+  return ogStore.previousGame ? createAkariPreviousGameProvider(ogStore.previousGame) : null
+})
 
 const as = useAppCommonStore()
 
@@ -69,4 +104,37 @@ const handleDryRunOngoingGame = async (draft: DraftOptions) => {
   await og.setDraft(draft)
   showPreviewModal.value = false
 }
+
+watch(
+  () => ogStore.previousGame,
+  (previousGame) => {
+    if (previousGame) {
+      activeTab.value = 'previous'
+    }
+  }
+)
 </script>
+
+<style scoped>
+.ongoing-game-tabs {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ongoing-game-tabs > :deep(.n-tabs-nav) {
+  flex-shrink: 0;
+  padding: 0 1rem;
+  border-bottom: 1px solid color-mix(in oklch, var(--la-color-text-primary) 10%, transparent);
+}
+
+.ongoing-game-tabs > :deep(.n-tab-pane) {
+  box-sizing: border-box;
+  height: 0;
+  min-height: 0;
+  flex: 1 1 0;
+  overflow: hidden;
+}
+</style>

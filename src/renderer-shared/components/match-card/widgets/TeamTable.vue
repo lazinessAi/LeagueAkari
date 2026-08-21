@@ -239,6 +239,23 @@
           />
         </div>
 
+        <!-- damage-gold efficiency -->
+        <div v-else-if="column.name === 'damage-gold-efficiency'" :class="column.class">
+          <NPopover :delay="300">
+            <template #trigger>
+              <div class="flex cursor-default flex-col items-center text-xs">
+                <div>{{ (participant.damageGoldEfficiency * 100).toFixed(2) }}%</div>
+                <div class="text-[11px] text-black/60 dark:text-white/60">
+                  {{ t('matchCard.teamTable.damageGoldEfficiency') }}
+                </div>
+              </div>
+            </template>
+            <div class="max-w-56 text-xs">
+              {{ t('matchCard.teamTable.damageGoldEfficiencyDefinition') }}
+            </div>
+          </NPopover>
+        </div>
+
         <!-- dmg dealt / dmg taken -->
         <div v-else-if="column.name === 'damage'" :class="column.class">
           <DamageBarWithPopover
@@ -343,6 +360,7 @@ const extraColumns = computed<ColumnConfig[]>(() => {
       return [
         { name: 'kda', class: 'min-w-[6.5rem] text-center' },
         { name: 'augments', class: 'min-w-[7.5rem] flex gap-0.5 justify-center' },
+        { name: 'damage-gold-efficiency', class: 'min-w-18 text-center' },
         { name: 'damage', class: 'min-w-32 flex gap-2 justify-center' },
         { name: 'cs', class: 'hidden @[740px]:block min-w-[4.5rem] text-center' },
         { name: 'gold', class: 'hidden @[700px]:block min-w-[4.5rem] text-xs text-center' },
@@ -352,6 +370,7 @@ const extraColumns = computed<ColumnConfig[]>(() => {
       return [
         { name: 'kda', class: 'min-w-[6.5rem] text-center' },
         { name: 'augments', class: 'min-w-[7.25rem] flex gap-0.5 justify-center' },
+        { name: 'damage-gold-efficiency', class: 'min-w-18 text-center' },
         { name: 'damage', class: 'min-w-[7.5rem] flex gap-2 justify-center' },
         { name: 'cs', class: 'hidden @[740px]:block min-w-[4.5rem] text-center' },
         { name: 'gold', class: 'hidden @[700px]:block min-w-[4.5rem] text-xs text-center' },
@@ -360,6 +379,7 @@ const extraColumns = computed<ColumnConfig[]>(() => {
     default:
       return [
         { name: 'kda', class: 'min-w-[6.5rem] text-center' },
+        { name: 'damage-gold-efficiency', class: 'min-w-18 text-center' },
         { name: 'damage', class: 'min-w-32 flex gap-2 justify-center' },
         { name: 'cs', class: 'hidden @[700px]:block w-[4.5rem] text-center' },
         { name: 'gold', class: 'min-w-[4.5rem] text-xs text-center' },

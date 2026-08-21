@@ -1,8 +1,6 @@
 import { computeSingleAkariScore } from '@shared/data-adapter/analysis/player'
 import type { AkariScore } from '@shared/data-adapter/analysis/player'
 import { computeSingleSummary } from '@shared/data-adapter/analysis/player/single/summary'
-import type { Participant } from '@shared/types/league-client/match-history'
-import type { SgpParticipantLol } from '@shared/types/sgp/match-history'
 import { computed, toValue } from 'vue'
 
 import { useMatchCard } from '../../context'
@@ -30,21 +28,11 @@ export function useRawDetails() {
     return scores
   })
 
-  const addUp = (
-    participant: { data: SgpParticipantLol; source: 'sgp' } | { data: Participant; source: 'lcu' }
-  ) => {
-    if (participant.source === 'sgp') {
-      return {
-        damageGoldEfficiency:
-          participant.data.totalDamageDealtToChampions / participant.data.goldEarned
-      }
-    }
-
-    return {
-      damageGoldEfficiency:
-        participant.data.stats.totalDamageDealtToChampions / participant.data.stats.goldEarned
-    }
-  }
+  const addUp = (puuid: string) => ({
+    damageGoldEfficiency:
+      participants.value.find((participant) => participant.puuid === puuid)?.damageGoldEfficiency ??
+      0
+  })
 
   return computed(() => {
     const { source, data } = toValue(summary)
@@ -67,7 +55,7 @@ export function useRawDetails() {
             ...rest,
             ...PlayerBehavior,
             ...challenges,
-            ...addUp({ data: p, source: 'sgp' }),
+            ...addUp(p.puuid),
             akariScore: akariScoresByPuuid.value[p.puuid],
             championId: p.championId,
             identity: {
@@ -89,7 +77,7 @@ export function useRawDetails() {
 
         return {
           ...p.stats,
-          ...addUp({ data: p, source: 'lcu' }),
+          ...addUp(identity.player.puuid),
           akariScore: akariScoresByPuuid.value[identity.player.puuid],
           championId: p.championId,
           identity: {

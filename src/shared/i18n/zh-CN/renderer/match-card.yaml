@@ -53,6 +53,8 @@ matchCard:
     bans: 禁用
     perMinuteSuffix: / 分钟
     cs: 补兵
+    damageGoldEfficiency: 伤转率
+    damageGoldEfficiencyDefinition: 伤转率 =（个人团队伤害占比 ÷ 个人团队经济占比）× 100%。100% 表示伤害占比与经济占比相同。
   overview:
     perfect: 完美
     damage: 伤害

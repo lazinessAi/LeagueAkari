@@ -1,4 +1,8 @@
 ongoingGame:
+  tabs:
+    current: 当前对局
+    previous: 上一局
+    noPrevious: 暂无上一局记录
   titlebar:
     draftMode: 草稿模式
     exitDraft: 退出草稿模式
@@ -174,8 +178,8 @@ ongoingGame:
     csTeamSharePopover: 平均补兵队伍占比为 {{rate}}%。
     damageGoldEfficiency: 伤转率 {{rate}}%
     damageGoldEfficiencyPopover: 在最近的 {{count}} 场对局中，该玩家的平均伤害转化率为 {{rate}}%
-    damageGoldEfficiencyPopoverDefinition: 伤转率 = 对英雄造成的总伤害 ÷ 获得金币，表示每 1 金币转化出的英雄伤害。
-    damageGoldEfficiencyPopoverUsage: 用于判断玩家把经济转化为英雄伤害的效率。
+    damageGoldEfficiencyPopoverDefinition: 伤转率 =（个人团队伤害占比 ÷ 个人团队经济占比）× 100%。100% 表示伤害占比与经济占比相同。
+    damageGoldEfficiencyPopoverUsage: 用于判断玩家的伤害贡献是否与其经济占比匹配。
     enemyMissingPings: 问号 {{count}} 次
     enemyMissingPingsPopover: 该玩家平均每局发送敌方消失信号 {{count}} 次
     visionScore: 视野分 {{count}}

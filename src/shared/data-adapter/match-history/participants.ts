@@ -108,6 +108,35 @@ export type MatchParticipant = {
   pentaKills: number
 }
 
+export function calculateDamageGoldEfficiency(
+  participant: Pick<MatchParticipant, 'totalDamageDealtToChampions' | 'goldEarned'>,
+  teamParticipants: Pick<MatchParticipant, 'totalDamageDealtToChampions' | 'goldEarned'>[]
+) {
+  const teamDamage = teamParticipants.reduce(
+    (total, item) => total + item.totalDamageDealtToChampions,
+    0
+  )
+  const teamGold = teamParticipants.reduce((total, item) => total + item.goldEarned, 0)
+
+  if (participant.goldEarned <= 0 || teamDamage <= 0 || teamGold <= 0) {
+    return 0
+  }
+
+  return participant.totalDamageDealtToChampions / teamDamage / (participant.goldEarned / teamGold)
+}
+
+function applyDamageGoldEfficiencies(participants: MatchParticipant[]) {
+  const participantsByTeam = Map.groupBy(participants, (participant) => participant.teamIdentifier)
+
+  return participants.map((participant) => ({
+    ...participant,
+    damageGoldEfficiency: calculateDamageGoldEfficiency(
+      participant,
+      participantsByTeam.get(participant.teamIdentifier)!
+    )
+  }))
+}
+
 // 以 SGP 的格式为参照，将 LCU 数据映射为抽象格式
 function mapLcuDataToPerks(participant: Participant): MatchParticipantPerks {
   return {
@@ -221,7 +250,7 @@ export function toParticipants(
         kda: (p.kills + p.assists) / noZero(p.deaths),
         killParticipation: (p.kills + p.assists) / noZero(totalKills[teamIdentifier]),
         totalDamageDealtToChampions: p.totalDamageDealtToChampions,
-        damageGoldEfficiency: p.totalDamageDealtToChampions / noZero(p.goldEarned),
+        damageGoldEfficiency: 0,
         physicalDamageDealtToChampions: p.physicalDamageDealtToChampions,
         magicDamageDealtToChampions: p.magicDamageDealtToChampions,
         trueDamageDealtToChampions: p.trueDamageDealtToChampions,
@@ -278,7 +307,7 @@ export function toParticipants(
       }
     })
 
-    return participants
+    return applyDamageGoldEfficiencies(participants)
   }
 
   const totalKills = data.participants.reduce(
@@ -346,8 +375,7 @@ export function toParticipants(
           (participant.stats.kills + participant.stats.assists) /
           noZero(totalKills[teamIdentifier]),
         totalDamageDealtToChampions: participant.stats.totalDamageDealtToChampions,
-        damageGoldEfficiency:
-          participant.stats.totalDamageDealtToChampions / noZero(participant.stats.goldEarned),
+        damageGoldEfficiency: 0,
         physicalDamageDealtToChampions: participant.stats.physicalDamageDealtToChampions,
         magicDamageDealtToChampions: participant.stats.magicDamageDealtToChampions,
         trueDamageDealtToChampions: participant.stats.trueDamageDealtToChampions,
@@ -390,7 +418,7 @@ export function toParticipants(
     })
     .filter(isNotNull)
 
-  return participants
+  return applyDamageGoldEfficiencies(participants)
 }
 
 function isNotNull<T>(value: T | null): value is T {

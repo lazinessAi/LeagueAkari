@@ -1,6 +1,5 @@
 import { Team } from '@shared/types/league-client/match-history'
 
-import { noZero } from '../utils'
 import { LcuOrSgpGameSummary } from '../wrapper'
 import { MatchBasicInfo } from './match-basic'
 import { MatchParticipant } from './participants'
@@ -227,9 +226,7 @@ export function toTeams(
         maxKillParticipation: Math.max(...teamParticipants.map((p) => p.killParticipation)),
         totalKillParticipation: teamParticipants.reduce((acc, p) => acc + p.killParticipation, 0),
         maxTimeCCingOthers: Math.max(...teamParticipants.map((p) => p.timeCCingOthers)),
-        maxDamageGoldEfficiency: Math.max(
-          ...teamParticipants.map((p) => p.totalDamageDealtToChampions / noZero(p.goldEarned))
-        ),
+        maxDamageGoldEfficiency: Math.max(...teamParticipants.map((p) => p.damageGoldEfficiency)),
         maxDamageShieldedOnTeammates:
           teamParticipants[0]?.totalDamageShieldedOnTeammates !== null
             ? Math.max(...teamParticipants.map((p) => p.totalDamageShieldedOnTeammates ?? 0))

@@ -53,6 +53,8 @@ matchCard:
     bans: Bans
     perMinuteSuffix: / min
     cs: CS
+    damageGoldEfficiency: Dmg-Gold
+    damageGoldEfficiencyDefinition: Damage-gold efficiency = player team damage share divided by player team gold share. 100% means the damage and gold shares are equal.
   overview:
     perfect: Perfect
     damage: Dmg.

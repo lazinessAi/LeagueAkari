@@ -1,4 +1,8 @@
 ongoingGame:
+  tabs:
+    current: Current Game
+    previous: Previous Game
+    noPrevious: No previous game record
   titlebar:
     draftMode: Draft Mode
     exitDraft: Exit Draft Mode
@@ -189,8 +193,8 @@ ongoingGame:
     damageGoldEfficiency: Dmg-Gold {{rate}}%
     damageGoldEfficiencyPopover_one: In the recent {{count}} game, this player's average damage to gold efficiency is {{rate}}%
     damageGoldEfficiencyPopover_other: In the recent {{count}} games, this player's average damage to gold efficiency is {{rate}}%
-    damageGoldEfficiencyPopoverDefinition: Damage-gold efficiency = total champion damage dealt divided by gold earned, showing how much champion damage each gold converts into.
-    damageGoldEfficiencyPopoverUsage: Use it to judge how efficiently the player converts gold into champion damage.
+    damageGoldEfficiencyPopoverDefinition: Damage-gold efficiency = player team damage share divided by player team gold share. 100% means the damage and gold shares are equal.
+    damageGoldEfficiencyPopoverUsage: Use it to judge whether the player's damage contribution matches their gold share.
     enemyMissingPings: Missing pings {{count}}
     enemyMissingPingsPopover_one: This player has sent enemy missing pings an average of {{count}} time per game
     enemyMissingPingsPopover_other: This player has sent enemy missing pings an average of {{count}} times per game

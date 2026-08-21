@@ -46,6 +46,7 @@ export interface OngoingGameProviderValue {
   readonly spells: Record<string, OngoingGamePanelSummonerSpellSelection>
   readonly isConnected: boolean
   readonly isSpectating: boolean
+  readonly isArchived: boolean
   readonly streamerMode: boolean
   readonly selfPuuid: string | null
 

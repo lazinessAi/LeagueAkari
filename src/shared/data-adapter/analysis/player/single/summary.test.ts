@@ -163,6 +163,23 @@ describe('computeSingleSummary', () => {
     expect(summary.visionScorePercentageOfTeam).toBeCloseTo(0.4)
   })
 
+  it('computes damage-to-gold efficiency from team shares', () => {
+    const basic = { gameDuration: 1800 } as MatchBasicInfo
+    const participant = createParticipant({
+      totalDamageDealtToChampions: 30000,
+      goldEarned: 12000
+    })
+    const teamParticipants = [
+      participant,
+      createParticipant({ totalDamageDealtToChampions: 15000, goldEarned: 10000 }),
+      createParticipant({ totalDamageDealtToChampions: 15000, goldEarned: 8000 })
+    ]
+
+    const summary = computeSingleSummary(basic, participant, teamParticipants, teamParticipants)
+
+    expect(summary.damageGoldEfficiency).toBeCloseTo(1.25)
+  })
+
   it('treats missing vision scores as 0', () => {
     const basic = {
       gameDuration: 1800

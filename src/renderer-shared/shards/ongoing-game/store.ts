@@ -8,6 +8,7 @@ import type {
   OngoingGamePositionAssignment,
   OngoingGameSettingsData,
   OngoingGameSimplifiedChampMastery,
+  OngoingGameSnapshot,
   QueryStage
 } from '@shared/shards/ongoing-game'
 import { createDefaultOngoingGamePanelPlayerCardTagSettings } from '@shared/shards/ongoing-game/settings'
@@ -50,6 +51,8 @@ export const useOngoingGameStore = defineStore('shard:ongoing-game-renderer', ()
   // untyped
   const queryStage = shallowRef<QueryStage>({ phase: 'unavailable', gameInfo: null })
   const isInEog = shallowRef(false)
+
+  const previousGame = shallowRef<OngoingGameSnapshot | null>(null)
 
   const analysis = shallowRef<{
     players: Record<string, AggregatedAnalysis>
@@ -97,6 +100,7 @@ export const useOngoingGameStore = defineStore('shard:ongoing-game-renderer', ()
     teams,
     queryStage,
     isInEog,
+    previousGame,
     analysis,
     matchHistoryTagParams,
 

@@ -322,6 +322,9 @@ export function createStoryOngoingGameProviderValue(
     get isSpectating() {
       return false
     },
+    get isArchived() {
+      return false
+    },
     get streamerMode() {
       return false
     },
