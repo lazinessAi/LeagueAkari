@@ -58,6 +58,7 @@ matchCard:
   overview:
     perfect: Perfect
     damage: Dmg.
+    damageGoldEfficiency: Dmg-Gold
     cs: CS
     csPerMin: / Min
   radar:

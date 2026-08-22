@@ -145,6 +145,19 @@
                     </div>
                   </div>
 
+                  <!-- damage-gold efficiency -->
+                  <div class="min-w-22">
+                    <div class="text-center text-base font-bold">
+                      {{ (participant.damageGoldEfficiency * 100).toFixed(0) }}%
+                    </div>
+
+                    <div class="flex justify-center gap-1">
+                      <div class="text-xs text-black/60 dark:text-white/60">
+                        {{ t('matchCard.overview.damageGoldEfficiency') }}
+                      </div>
+                    </div>
+                  </div>
+
                   <!-- cs -->
                   <div class="hidden min-w-22 @min-[700px]:block" v-if="displayParts.cs">
                     <div class="text-center text-base font-bold">

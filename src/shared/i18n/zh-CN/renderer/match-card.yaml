@@ -58,6 +58,7 @@ matchCard:
   overview:
     perfect: 完美
     damage: 伤害
+    damageGoldEfficiency: 伤转率
     cs: 补兵
     csPerMin: / 分钟
   radar:
