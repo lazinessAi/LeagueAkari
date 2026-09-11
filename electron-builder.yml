@@ -57,7 +57,7 @@ dmg:
   artifactName: ${name}-${version}.${ext}
 asar: true
 electronFuses:
-  enableEmbeddedAsarIntegrityValidation: true
+  enableEmbeddedAsarIntegrityValidation: false
 
 npmRebuild: false
 publish:
