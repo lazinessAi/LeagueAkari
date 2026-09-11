@@ -18,25 +18,29 @@ const options: EnabledAutoSelectGroupsOptions = {
       enabled: true,
       benchHandleTradeEnabled: false,
       acceptChampionSwapFromFriendsEnabled: false,
-      championSwapFriendWhitelist: []
+      championSwapFriendWhitelist: [],
+      autoDeclineRepeatedChampionSwapEnabled: false
     },
     'current-server': {
       enabled: false,
       benchHandleTradeEnabled: true,
       acceptChampionSwapFromFriendsEnabled: false,
-      championSwapFriendWhitelist: []
+      championSwapFriendWhitelist: [],
+      autoDeclineRepeatedChampionSwapEnabled: false
     },
     'other-server': {
       enabled: true,
       benchHandleTradeEnabled: true,
       acceptChampionSwapFromFriendsEnabled: false,
-      championSwapFriendWhitelist: []
+      championSwapFriendWhitelist: [],
+      autoDeclineRepeatedChampionSwapEnabled: false
     },
     'removed-from-catalog': {
       enabled: true,
       benchHandleTradeEnabled: true,
       acceptChampionSwapFromFriendsEnabled: false,
-      championSwapFriendWhitelist: []
+      championSwapFriendWhitelist: [],
+      autoDeclineRepeatedChampionSwapEnabled: false
     }
   },
   banConfig: {
@@ -75,27 +79,61 @@ describe('automation status model', () => {
           enabled: false,
           benchHandleTradeEnabled: false,
           acceptChampionSwapFromFriendsEnabled: true,
-          championSwapFriendWhitelist: [{ summonerId: 1, name: 'a' }]
+          championSwapFriendWhitelist: [{ summonerId: 1, name: 'a' }],
+          autoDeclineRepeatedChampionSwapEnabled: false
         },
         // enabled + empty whitelist -> does not qualify
         'current-server': {
           enabled: false,
           benchHandleTradeEnabled: false,
           acceptChampionSwapFromFriendsEnabled: true,
-          championSwapFriendWhitelist: []
+          championSwapFriendWhitelist: [],
+          autoDeclineRepeatedChampionSwapEnabled: false
         },
         // disabled + non-empty whitelist -> does not qualify
         'other-server': {
           enabled: false,
           benchHandleTradeEnabled: false,
           acceptChampionSwapFromFriendsEnabled: false,
-          championSwapFriendWhitelist: [{ summonerId: 2, name: 'b' }]
+          championSwapFriendWhitelist: [{ summonerId: 2, name: 'b' }],
+          autoDeclineRepeatedChampionSwapEnabled: false
         }
       }
     }
 
     expect(
       getEnabledAutoSelectGroups(swapOptions, 'champion-swap-friend').map((group) => group.groupId)
+    ).toEqual(['global'])
+  })
+
+  test('counts champion-swap-auto-decline groups only when enabled', () => {
+    const swapOptions: EnabledAutoSelectGroupsOptions = {
+      ...options,
+      sgpServerId: '',
+      pickConfig: {
+        // enabled -> qualifies
+        global: {
+          enabled: false,
+          benchHandleTradeEnabled: false,
+          acceptChampionSwapFromFriendsEnabled: false,
+          championSwapFriendWhitelist: [],
+          autoDeclineRepeatedChampionSwapEnabled: true
+        },
+        // disabled -> does not qualify
+        'current-server': {
+          enabled: false,
+          benchHandleTradeEnabled: false,
+          acceptChampionSwapFromFriendsEnabled: false,
+          championSwapFriendWhitelist: [],
+          autoDeclineRepeatedChampionSwapEnabled: false
+        }
+      }
+    }
+
+    expect(
+      getEnabledAutoSelectGroups(swapOptions, 'champion-swap-auto-decline').map(
+        (group) => group.groupId
+      )
     ).toEqual(['global'])
   })
 

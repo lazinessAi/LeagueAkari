@@ -26,6 +26,9 @@ export interface PickChampionConfig {
   // bench mode only: 无条件接受来自指定好友的英雄交换
   acceptChampionSwapFromFriendsEnabled: boolean
   championSwapFriendWhitelist: ChampionSwapFriend[]
+
+  // bench mode only: 自动拒绝本场选人中已手动拒绝过的队友的后续交换请求
+  autoDeclineRepeatedChampionSwapEnabled: boolean
 }
 
 export interface ChampionSwapFriend {

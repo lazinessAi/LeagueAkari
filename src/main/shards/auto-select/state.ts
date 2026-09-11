@@ -55,6 +55,9 @@ export interface PickChampionConfig {
   // bench mode only: 无条件接受来自指定好友的英雄交换
   acceptChampionSwapFromFriendsEnabled: boolean
   championSwapFriendWhitelist: ChampionSwapFriend[]
+
+  // bench mode only: 自动拒绝本场选人中已手动拒绝过的队友的后续交换请求
+  autoDeclineRepeatedChampionSwapEnabled: boolean
 }
 
 export interface ChampionSwapFriend {
@@ -121,7 +124,8 @@ export class AutoSelectSettings {
       benchSelectFirstAvailableChampion: false,
       benchSwapAccumulatedDelaySeconds: 2.9,
       acceptChampionSwapFromFriendsEnabled: false,
-      championSwapFriendWhitelist: []
+      championSwapFriendWhitelist: [],
+      autoDeclineRepeatedChampionSwapEnabled: false
     }
   }
 
@@ -524,6 +528,13 @@ export class AutoSelectState {
    */
   ongoingChampionSwapCreatedAt: number | null = null
 
+  /**
+   * 本场选人中被玩家**手动**拒绝过交换请求的队友 summonerId 集合
+   *
+   * 选人阶段结束后清空，下一场重新记录
+   */
+  declinedChampionSwapSummonerIds: number[] = []
+
   setTemporarilyDisabled(value: boolean) {
     this.temporarilyDisabled = value
   }
@@ -548,6 +559,10 @@ export class AutoSelectState {
     this.ongoingChampionSwapCreatedAt = value
   }
 
+  setDeclinedChampionSwapSummonerIds(value: number[]) {
+    this.declinedChampionSwapSummonerIds = value
+  }
+
   constructor(
     private readonly _leagueClientData: LeagueClientData,
     private readonly _settings: AutoSelectSettings,
@@ -569,7 +584,8 @@ export class AutoSelectState {
       delayedBanTask: observableStruct,
       delayedPickTask: observableStruct,
       delayedBenchSwapTask: observableStruct,
-      delayedChampionSwapTask: observableStruct
+      delayedChampionSwapTask: observableStruct,
+      declinedChampionSwapSummonerIds: observableStruct
     })
   }
 }

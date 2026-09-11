@@ -178,6 +178,9 @@ automation:
       enabled:
         label: Accept Swaps From Friends
         description: When enabled, a champion swap from a whitelisted friend is accepted immediately and unconditionally, regardless of your expected champions. Has no effect while the whitelist is empty.
+      autoDeclineRepeated:
+        label: Auto-Decline Repeated Swaps
+        description: When enabled, once you manually decline a teammate's swap request, further swap requests from that teammate are declined automatically in this champ select. Only applies to the current champ select and resets in the next game.
       friends:
         label: Friend Whitelist
         description: Select the friends whose champion swaps may be auto-accepted.

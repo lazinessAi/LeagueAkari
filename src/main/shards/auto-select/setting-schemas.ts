@@ -26,7 +26,9 @@ const pickChampionConfigSchema = z.object({
   benchSwapAccumulatedDelaySeconds: z.number(),
   benchHandleTradeEnabled: z.boolean(),
   acceptChampionSwapFromFriendsEnabled: z.boolean(),
-  championSwapFriendWhitelist: z.array(z.object({ summonerId: z.number(), name: z.string() }))
+  championSwapFriendWhitelist: z.array(z.object({ summonerId: z.number(), name: z.string() })),
+  // default 用于兼容缺少该键的历史持久化数据，缺省视为关闭
+  autoDeclineRepeatedChampionSwapEnabled: z.boolean().default(false)
 })
 
 const banChampionConfigSchema = z.object({

@@ -93,6 +93,10 @@ export function useEnabledAutomations() {
       autoSelectOptions,
       'champion-swap-friend'
     )
+    const championSwapAutoDeclineGroups = getEnabledAutoSelectGroups(
+      autoSelectOptions,
+      'champion-swap-auto-decline'
+    )
 
     const addAutoSelectAutomation = (
       id: string,
@@ -139,6 +143,12 @@ export function useEnabledAutomations() {
       'titlebar.automation.items.championSwapFriend',
       'automation.champ-select.champion-swap.enabled',
       championSwapFriendGroups
+    )
+    addAutoSelectAutomation(
+      'champion-swap-auto-decline',
+      'titlebar.automation.items.championSwapAutoDecline',
+      'automation.champ-select.champion-swap.auto-decline-repeated',
+      championSwapAutoDeclineGroups
     )
 
     const configuredChampionCount = countConfiguredChampions(

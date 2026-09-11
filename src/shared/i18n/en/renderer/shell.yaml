@@ -121,6 +121,7 @@ titlebar:
       autoPickBan: Automatic champion selection and banning
       autoTrade: Automatic champion trade handling
       championSwapFriend: Accept champion swaps from friends
+      championSwapAutoDecline: Auto-decline repeated swaps
       autoChampConfig: Automatic champion setup
       autoReply: Automatic reply
       scheduledInvitation: Scheduled friend invitation

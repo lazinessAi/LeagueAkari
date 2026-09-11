@@ -120,6 +120,7 @@ titlebar:
       autoPickBan: 自动英雄选择和禁用
       autoTrade: 自动处理英雄交换
       championSwapFriend: 接受好友的英雄交换
+      championSwapAutoDecline: 自动拒绝重复交换请求
       autoChampConfig: 自动英雄配置
       autoReply: 自动回复
       scheduledInvitation: 预约邀请好友

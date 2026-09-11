@@ -42,6 +42,7 @@ auto-select-main:
   accept-champion-swap: Will accept swap request for {{champion}} in {{seconds}} seconds
   decline-champion-swap: Will decline swap request for {{champion}} in {{seconds}} seconds
   accept-champion-swap-from-friend: Accepted champion swap {{champion}} from friend {{name}}
+  auto-decline-repeated-champion-swap: Auto-declined swap request for {{champion}} from {{name}}
   show-ban: Will show ban {{champion}} in {{seconds}} seconds
   complete-ban: Will complete ban {{champion}} in {{seconds}} seconds
   show-pick: Will show pick {{champion}} in {{seconds}} seconds

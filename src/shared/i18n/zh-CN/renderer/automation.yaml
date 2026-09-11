@@ -178,6 +178,9 @@ automation:
       enabled:
         label: 接受好友的英雄交换
         description: 开启后，当白名单中的好友与你发起英雄交换时，将无条件立即接受，不受意向英雄设置影响。白名单为空时此功能不生效。
+      autoDeclineRepeated:
+        label: 自动拒绝重复交换请求
+        description: 开启后，若你在选人阶段手动拒绝了某位队友的英雄交换，本场选人内该队友的后续交换请求将被自动拒绝。仅限当前选人阶段，下一场重新计算。
       friends:
         label: 好友白名单
         description: 勾选允许自动接受其英雄交换的好友
