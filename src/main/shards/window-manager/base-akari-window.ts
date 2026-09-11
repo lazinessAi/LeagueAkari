@@ -77,6 +77,11 @@ export interface AkariBaseWindowConfig<TSettings extends BaseAkariWindowBasicSet
   rememberSize?: boolean
 
   /**
+   * 将记忆上一次的最大化状态, default: false
+   */
+  rememberMaximized?: boolean
+
+  /**
    * BrowserWindow 选项
    */
   browserWindowOptions?: BrowserWindowConstructorOptions
@@ -104,6 +109,9 @@ export abstract class BaseAkariWindow<
 
   protected _forceReadyTimerId: NodeJS.Timeout | null = null
   protected _trueClose = false
+
+  private _wasMaximized = false
+  private _pendingMaximizedRestore = false
 
   protected readonly _settingService: SetterSettingService<TSettings>
 
@@ -299,6 +307,8 @@ export abstract class BaseAkariWindow<
   protected _createWindow() {
     const { webPreferences, ...rest } = this._config.browserWindowOptions || {}
 
+    this._pendingMaximizedRestore = this._config.rememberMaximized === true && this._wasMaximized
+
     this._window = new BrowserWindow({
       width: this._config.baseWidth,
       height: this._config.baseHeight,
@@ -310,7 +320,9 @@ export abstract class BaseAkariWindow<
         sandbox: false,
         spellcheck: false,
         partition: this._partition,
-        backgroundThrottling: false,
+        // Disabling this can leave hidden Windows windows with stale rendering and input state.
+        // Keep Electron's default throttling behavior unless a window has a proven need to opt out.
+        backgroundThrottling: true,
         additionalArguments: [`--akari-window-type=${this._namespaceSuffix}`],
         ...webPreferences
       },
@@ -324,10 +336,13 @@ export abstract class BaseAkariWindow<
         clearTimeout(this._forceReadyTimerId)
         this._forceReadyTimerId = null
       }
-      runInAction(() => (this.state.ready = true))
-
-      if (this._window && this._config.repositionWindowIfInvisible) {
-        repositionWindowIfInvisible(this._window)
+      if (!this._config.rememberMaximized) {
+        runInAction(() => (this.state.ready = true))
+        if (this._window && this._config.repositionWindowIfInvisible) {
+          repositionWindowIfInvisible(this._window)
+        }
+      } else if (!this.state.ready) {
+        this._markReady()
       }
     })
 
@@ -393,7 +408,11 @@ export abstract class BaseAkariWindow<
 
       this._forceReadyTimerId = setTimeout(() => {
         this._logger.warn(`WebContents force-ready (${this._namespace})`)
-        runInAction(() => (this.state.ready = true))
+        if (this._config.rememberMaximized) {
+          this._markReady()
+        } else {
+          runInAction(() => (this.state.ready = true))
+        }
       }, 5000)
     })
 
@@ -445,11 +464,25 @@ export abstract class BaseAkariWindow<
     })
 
     this._window.on('unmaximize', () => {
-      runInAction(() => (this.state.status = 'normal'))
+      runInAction(() => (this.state.status = this._window?.isMinimized() ? 'minimized' : 'normal'))
+      // Minimizing must retain the last normal/maximized choice.
+      if (!this._window?.isMinimized()) {
+        this._saveMaximizedState(false)
+      }
     })
 
     this._window.on('maximize', () => {
       runInAction(() => (this.state.status = 'maximized'))
+      // macOS zoom animations emit intermediate normal resizes. getNormalBounds returns
+      // outer bounds, so it can replace tracked content bounds only for frameless windows.
+      if (
+        this._config.rememberMaximized &&
+        this._config.browserWindowOptions?.frame === false &&
+        this._context.shared.global.platform === 'darwin'
+      ) {
+        runInAction(() => (this.state.trackedBounds = this._window!.getNormalBounds()))
+      }
+      this._saveMaximizedState(true)
     })
 
     this._window.on('minimize', () => {
@@ -457,7 +490,7 @@ export abstract class BaseAkariWindow<
     })
 
     this._window.on('restore', () => {
-      runInAction(() => (this.state.status = 'normal'))
+      runInAction(() => (this.state.status = this._window?.isMaximized() ? 'maximized' : 'normal'))
     })
 
     this._window.on('focus', () => {
@@ -595,6 +628,49 @@ export abstract class BaseAkariWindow<
     this._logger.info(`Create ${this._namespace}`)
   }
 
+  private _markReady() {
+    if (this._window && this._config.repositionWindowIfInvisible) {
+      repositionWindowIfInvisible(this._window)
+    }
+
+    // Consumers may show the window synchronously: finish normal-bounds recovery first.
+    runInAction(() => (this.state.ready = true))
+
+    // Also cover show:true and explicit show calls made before ready, without opening hidden windows.
+    if (this._window?.isVisible()) {
+      this._restoreMaximizedState()
+    }
+  }
+
+  private _restoreMaximizedState() {
+    if (!this._window || !this.state.ready || !this._pendingMaximizedRestore) {
+      return false
+    }
+
+    this._pendingMaximizedRestore = false
+    if (this._window.isMaximizable()) {
+      this._window.maximize()
+      return true
+    }
+
+    return false
+  }
+
+  private _saveMaximizedState(maximized: boolean) {
+    if (!this._config.rememberMaximized || this._context.shared.global.isReadyToQuit) {
+      return
+    }
+
+    this._pendingMaximizedRestore = false
+    if (this._wasMaximized === maximized) {
+      return
+    }
+
+    this._wasMaximized = maximized
+    // Use the existing per-window queue, flushed on normal shutdown.
+    void this._settingService._saveToStorage('maximized', maximized, { delay: 0 })
+  }
+
   setOpacity(opacity: number) {
     runInAction(() => {
       this.settings.opacity = opacity
@@ -615,39 +691,105 @@ export abstract class BaseAkariWindow<
 
   showOrRestore(inactive = false) {
     if (this._window) {
-      if (!this.state.show) {
+      this._restoreMaximizedState()
+      if (this._window.isMinimized()) {
+        this._window.restore()
+
+        if (!inactive) {
+          this._window.focus()
+        }
+
+        this._syncShowStateFromWindow()
+
+        return
+      }
+
+      const nativeVisible = this._window.isVisible()
+      if (!this.state.show || !nativeVisible) {
+        if (this.state.show !== nativeVisible) {
+          this._logger.warn(
+            `Window visibility state mismatch (${this._namespace}): state.show=${this.state.show}, nativeVisible=${nativeVisible}; reissuing show`
+          )
+        }
+
         if (inactive) {
           this._window.showInactive()
         } else {
           this._window.show()
         }
 
+        this._syncShowStateFromWindow()
+
         return
       }
-
-      if (this._window.isMinimized()) {
-        this._window.restore()
-      }
-
       if (!inactive) {
         this._window.focus()
       }
+
+      this._syncShowStateFromWindow()
     }
   }
 
   show(inactive = false) {
-    if (this._window && !this.state.show) {
+    if (!this._window) {
+      return
+    }
+
+    if (this._restoreMaximizedState() && !inactive) {
+      // maximize() shows a hidden window without focusing it.
+      this._window.focus()
+    }
+
+    if (this._window.isMinimized()) {
+      this._window.restore()
+
+      if (!inactive) {
+        this._window.focus()
+      }
+
+      this._syncShowStateFromWindow()
+
+      return
+    }
+
+    const nativeVisible = this._window.isVisible()
+    if (!this.state.show || !nativeVisible) {
+      if (this.state.show !== nativeVisible) {
+        this._logger.warn(
+          `Window visibility state mismatch (${this._namespace}): state.show=${this.state.show}, nativeVisible=${nativeVisible}; reissuing show`
+        )
+      }
+
       if (inactive) {
         this._window.showInactive()
       } else {
         this._window.show()
       }
+
+      this._syncShowStateFromWindow()
     }
   }
 
   hide() {
-    if (this._window && this.state.show) {
+    if (!this._window) {
+      return
+    }
+
+    if (this._window.isVisible() || this._window.isMinimized()) {
       this._window.hide()
+    }
+
+    this._syncShowStateFromWindow()
+  }
+
+  private _syncShowStateFromWindow() {
+    if (!this._window) {
+      return
+    }
+
+    const show = this._window.isVisible()
+    if (this.state.show !== show) {
+      runInAction(() => (this.state.show = show))
     }
   }
 
@@ -687,8 +829,7 @@ export abstract class BaseAkariWindow<
   toggleMinimizedAndFocused() {
     if (this._window) {
       if (!this.state.show) {
-        this._window.show()
-        this._window.focus()
+        this.showOrRestore()
         return
       }
 
@@ -746,6 +887,10 @@ export abstract class BaseAkariWindow<
     const bounds = await this._settingService._getFromStorage('trackedBounds')
     if (bounds) {
       runInAction(() => (this.state.trackedBounds = bounds))
+    }
+
+    if (this._config.rememberMaximized) {
+      this._wasMaximized = (await this._settingService._getFromStorage('maximized')) === true
     }
 
     this._baseWindowIpcCall()

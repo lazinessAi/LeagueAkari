@@ -169,6 +169,15 @@ const targetDefinitions = [
     descriptionKey: 'settings.app.mainWindowUi.background.description'
   },
   {
+    id: 'app.main-window-ui.custom-background',
+    route: { tab: 'basic' },
+    parentId: 'app.main-window-ui',
+    fallbackId: 'app.main-window-ui.background',
+    labelKey: 'settings.app.mainWindowUi.customBackground.label',
+    descriptionKey: 'settings.app.mainWindowUi.customBackground.description',
+    searchable: false
+  },
+  {
     id: 'app.lcu-connection',
     route: { tab: 'basic' },
     labelKey: 'settings.app.lcConnection.title',
@@ -206,6 +215,43 @@ const targetDefinitions = [
     descriptionKey: 'settings.app.lcConnection.rebuildWmi.description'
   },
   {
+    id: 'app.http-proxy',
+    route: { tab: 'basic' },
+    labelKey: 'settings.app.httpProxy.title',
+    searchable: false
+  },
+  {
+    id: 'app.misc.http-proxy.strategy',
+    route: { tab: 'basic' },
+    parentId: 'app.http-proxy',
+    labelKey: 'settings.app.httpProxy.strategy.label',
+    descriptionKey: 'settings.app.httpProxy.strategy.description'
+  },
+  {
+    id: 'app.misc.http-proxy.host',
+    route: { tab: 'basic' },
+    parentId: 'app.http-proxy',
+    fallbackId: 'app.misc.http-proxy.strategy',
+    prepareStep: {
+      key: APP_SETTINGS_NAVIGATION_STEP_KEY,
+      payload: 'forced-http-proxy' satisfies AppSettingsNavigationPayload
+    },
+    labelKey: 'settings.app.httpProxy.host.label',
+    descriptionKey: 'settings.app.httpProxy.host.description'
+  },
+  {
+    id: 'app.misc.http-proxy.port',
+    route: { tab: 'basic' },
+    parentId: 'app.http-proxy',
+    fallbackId: 'app.misc.http-proxy.strategy',
+    prepareStep: {
+      key: APP_SETTINGS_NAVIGATION_STEP_KEY,
+      payload: 'forced-http-proxy' satisfies AppSettingsNavigationPayload
+    },
+    labelKey: 'settings.app.httpProxy.port.label',
+    descriptionKey: 'settings.app.httpProxy.port.description'
+  },
+  {
     id: 'app.misc',
     route: { tab: 'basic' },
     labelKey: 'settings.app.misc.title',
@@ -217,37 +263,6 @@ const targetDefinitions = [
     parentId: 'app.misc',
     labelKey: 'settings.app.misc.logLevel.label',
     descriptionKey: 'settings.app.misc.logLevel.description'
-  },
-  {
-    id: 'app.misc.http-proxy.strategy',
-    route: { tab: 'basic' },
-    parentId: 'app.misc',
-    labelKey: 'settings.app.misc.httpProxy.strategy.label',
-    descriptionKey: 'settings.app.misc.httpProxy.strategy.description'
-  },
-  {
-    id: 'app.misc.http-proxy.host',
-    route: { tab: 'basic' },
-    parentId: 'app.misc',
-    fallbackId: 'app.misc.http-proxy.strategy',
-    prepareStep: {
-      key: APP_SETTINGS_NAVIGATION_STEP_KEY,
-      payload: 'forced-http-proxy' satisfies AppSettingsNavigationPayload
-    },
-    labelKey: 'settings.app.misc.httpProxy.host.label',
-    descriptionKey: 'settings.app.misc.httpProxy.host.description'
-  },
-  {
-    id: 'app.misc.http-proxy.port',
-    route: { tab: 'basic' },
-    parentId: 'app.misc',
-    fallbackId: 'app.misc.http-proxy.strategy',
-    prepareStep: {
-      key: APP_SETTINGS_NAVIGATION_STEP_KEY,
-      payload: 'forced-http-proxy' satisfies AppSettingsNavigationPayload
-    },
-    labelKey: 'settings.app.misc.httpProxy.port.label',
-    descriptionKey: 'settings.app.misc.httpProxy.port.description'
   },
   {
     id: 'app.misc.disable-hardware-acceleration',
@@ -406,13 +421,6 @@ const targetDefinitions = [
     descriptionKey: 'settings.multiWindow.auxWindow.opacity.description'
   },
   {
-    id: 'multi-window.aux.skin-selector',
-    route: { tab: 'multi-window' },
-    parentId: 'multi-window.aux',
-    labelKey: 'settings.multiWindow.auxWindow.showSkinSelector.label',
-    descriptionKey: 'settings.multiWindow.auxWindow.showSkinSelector.description'
-  },
-  {
     id: 'multi-window.aux.reset-position',
     route: { tab: 'multi-window' },
     parentId: 'multi-window.aux',
@@ -452,6 +460,13 @@ const targetDefinitions = [
     parentId: 'multi-window.opgg',
     labelKey: 'settings.multiWindow.opggWindow.opacity.label',
     descriptionKey: 'settings.multiWindow.opggWindow.opacity.description'
+  },
+  {
+    id: 'multi-window.opgg.skin-selector',
+    route: { tab: 'multi-window' },
+    parentId: 'multi-window.opgg',
+    labelKey: 'settings.multiWindow.opggWindow.showSkinSelector.label',
+    descriptionKey: 'settings.multiWindow.opggWindow.showSkinSelector.description'
   },
   {
     id: 'multi-window.opgg.reset-position',
@@ -1011,6 +1026,7 @@ const targetDefinitions = [
       'toolkit.inGameSend.presets.jungle.label',
       'toolkit.inGameSend.presets.premade.label',
       'toolkit.inGameSend.presets.fixedText.label',
+      'toolkit.inGameSend.presets.customTemplate.label',
       'toolkit.inGameSend.presets.nameDisplayStrategy.title',
       'toolkit.inGameSend.presets.rating.displayOptions.winRate.label',
       'toolkit.inGameSend.presets.rating.displayOptions.kda.label',

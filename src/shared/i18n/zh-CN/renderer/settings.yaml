@@ -100,22 +100,26 @@ settings:
         description: 设置主界面的背景显示方式
         options:
           profileSkin: 英雄背景
-          none: 无
-          mica: Mica
+          customImage: 自定义壁纸
+          none: 默认
+          system: 系统材质
         tooltips:
           profileSkin: 使用当前玩家的生涯背景皮肤作为主界面背景
-          mica: 仅 Windows 高版本系统可用。如果当前平台不可用，会回退到“无”
-          micaUnsupported: 当前平台不支持 Mica，会回退到“无”
-      useProfileSkinAsBackground:
-        label: 使用生涯皮肤背景
-        description: $t(common:appName) 将使用当前玩家的生涯背景皮肤作为背景。当背景材质被设置时，该选项将被不会生效
+          system: 在 Windows 上使用 Mica，在 macOS 上使用原生窗口模糊。当前平台不可用或启用失败时会回退到默认纯色背景
+      customBackground:
+        label: 自定义壁纸
+        description: 使用固定的本地图片或视频作为背景。壁纸会居中裁剪
+        filePath: 文件路径
+        filePlaceholder: 尚未选择壁纸文件
+        browse: 浏览
+        overlayStrength: 蒙层深度
       backgroundMaterial:
         label: 背景材质
         description: 设置应用界面的背景材质，需特定系统版本支持
         options:
           none: 无
-          mica: Mica
-          micaUnsupported: Mica (不支持)
+          system: 系统材质
+          systemUnsupported: 系统材质 (不支持)
     lcConnection:
       title: LCU 连接
       autoConnect:
@@ -128,6 +132,21 @@ settings:
         label: 重建 WMI
         description: 如果 WMI 无法正常使用，可尝试此修复选项
         rebuildButton: 重建 WMI
+    httpProxy:
+      title: 网络代理
+      strategy:
+        label: HTTP 代理
+        description: 设置整个应用外部 HTTP 请求的代理，包括数据、图片和更新下载；本地客户端连接不受影响
+        options:
+          fixed-servers: 手动代理
+          system: 跟随系统
+          direct: 关闭代理
+      host:
+        label: 代理主机
+        description: 代理服务器的主机地址
+      port:
+        label: 代理端口
+        description: 代理服务器的端口
     misc:
       title: 其他
       logLevel:
@@ -143,20 +162,6 @@ settings:
         enableConfirmation: 将启用硬件加速，重启应用以应用更改
         positiveText: 重启应用并退出
         negativeText: 取消
-      httpProxy:
-        strategy:
-          label: HTTP 代理
-          description: 设置 HTTP 代理，除 LCU HTTP 之外的所有网络请求都将通过该代理
-          options:
-            force: 使用代理
-            auto: 跟随系统
-            disable: 不使用代理
-        host:
-          label: 代理主机
-          description: 代理服务器的主机地址
-        port:
-          label: 代理端口
-          description: 代理服务器的端口
       uninstallApp:
         label: 卸载应用
         description: 卸载应用，将删除所有数据和配置
@@ -286,32 +291,32 @@ settings:
       opacity:
         label: 小窗口不透明度
         description: 小窗口的半透明状态
-      showSkinSelector:
-        label: 皮肤设置器
-        description: 在小窗口展示一个设置皮肤的快捷入口
       resetWindowPosition:
         label: 重置小窗口位置
         description: 重新设置小窗口的位置，还原到默认主屏幕正中心
         button: 重置
     opggWindow:
-      title: OP.GG 窗口
+      title: 英雄数据窗口
       enabled:
-        label: 启用 OP.GG 特性
-        description: 启用 OP.GG 相关功能
-        descriptionWithIcon: 可通过标题栏右侧的快捷图标 ({icon})，或托盘区右键菜单中的 "OP.GG 窗口" 打开 OP.GG 窗口
+        label: 启用英雄数据功能
+        description: 使用 OP.GG 或 101 国服查看英雄数据
+        descriptionWithIcon: 可通过标题栏右侧的快捷图标 ({icon})，或托盘区右键菜单中的“英雄数据窗口”打开
       autoShow:
         label: 自动弹出和关闭
-        description: 在游戏流程的部分阶段，自动弹出或关闭 OP.GG 窗口
+        description: 在游戏流程的部分阶段，自动弹出或关闭英雄数据窗口
       opacity:
-        label: OP.GG 窗口不透明度
-        description: OP.GG 窗口的半透明状态
+        label: 英雄数据窗口不透明度
+        description: 英雄数据窗口的半透明状态
       resetWindowPosition:
-        label: 重置 OP.GG 窗口位置
-        description: 重新设置 OP.GG 窗口的位置，还原到默认主屏幕正中心
+        label: 重置英雄数据窗口位置
+        description: 重新设置英雄数据窗口的位置，还原到默认主屏幕正中心
         button: 重置
       showShortcut:
         label: 显示快捷键
-        description: 使用快捷键以显示或关闭 OP.GG 窗口。当游戏位于前台时，将自动转为置顶状态。请确保开启了游戏的无边框或窗口模式，以便此窗口正常显示
+        description: 使用快捷键以显示或关闭英雄数据窗口。当游戏位于前台时，将自动转为置顶状态。请确保开启了游戏的无边框或窗口模式，以便此窗口正常显示
+      showSkinSelector:
+        label: 皮肤设置器
+        description: 在选人助手中展示设置皮肤的快捷入口
     ongoingGameWindow:
       title: 对局叠加窗口
       titleRequireAdmin: 对局叠加窗口 (管理员权限)

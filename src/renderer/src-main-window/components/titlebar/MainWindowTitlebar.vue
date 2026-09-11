@@ -2,10 +2,7 @@
   <div
     ref="titlebar"
     class="app-titlebar"
-    :class="[
-      { 'should-show-bottom-border': shouldShowBottomBorder },
-      as.isMacOS ? 'pl-[calc(8px+var(--la-mac-titlebar-safe-left))]' : 'pl-2'
-    ]"
+    :class="[{ 'should-show-bottom-border': shouldShowBottomBorder }, 'pl-2']"
   >
     <div class="shard-area">
       <Transition name="fade">
@@ -22,6 +19,7 @@
     <div class="divider" :class="{ invisible: !shouldShowDivider }" />
     <SearchButton :compact="isCompactTitlebar" />
     <AutomationStatus :compact="isCompactTitlebar" />
+    <BackgroundTasks :compact="isCompactTitlebar" />
     <CommonButtons />
 
     <div class="w-1" v-if="as.isMacOS"></div>
@@ -45,6 +43,7 @@ import { useRoute } from 'vue-router'
 import { usePlayerTabsStore } from '@main-window/shards/player-tabs/store'
 
 import { AutomationStatus } from './automation-status'
+import { BackgroundTasks } from './background-tasks'
 import CommonButtons from './CommonButtons.vue'
 import { SearchButton } from '../search-pane'
 import OngoingGameTitle from './OngoingGameTitle.vue'
@@ -109,10 +108,6 @@ const shouldShowBottomBorder = computed(() => {
     [data-theme='dark'] & {
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
-  }
-
-  .mica & {
-    backdrop-filter: none;
   }
 }
 

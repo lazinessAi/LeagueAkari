@@ -9,6 +9,7 @@ import { AutoChampionConfigMain } from '@main/shards/auto-champ-config'
 import { AutoGameflowMain } from '@main/shards/auto-gameflow'
 import { AutoMiscMain } from '@main/shards/auto-misc'
 import { AutoSelectMain } from '@main/shards/auto-select'
+import { ChampionDataMain } from '@main/shards/champion-data'
 import { ClientInstallationMain } from '@main/shards/client-installation'
 import { ConfigMigrateMain } from '@main/shards/config-migrate'
 import { ExtraAssetsMain } from '@main/shards/extra-assets'
@@ -20,7 +21,9 @@ import { KeyboardShortcutsMain } from '@main/shards/keyboard-shortcuts'
 import { LeagueClientMain } from '@main/shards/league-client'
 import { LeagueClientUxMain } from '@main/shards/league-client-ux'
 import { LoggerFactoryMain } from '@main/shards/logger-factory'
+import { MainWindowUiMain } from '@main/shards/main-window-ui'
 import { MobxUtilsMain } from '@main/shards/mobx-utils'
+import { NetworkMain } from '@main/shards/network'
 import { OngoingGameMain } from '@main/shards/ongoing-game'
 import { RendererDebugMain } from '@main/shards/renderer-debug'
 import { RespawnTimerMain } from '@main/shards/respawn-timer'
@@ -312,6 +315,7 @@ export function bootstrap() {
 
     // connection & data provider shards
     manager.use(ConfigMigrateMain)
+    manager.use(NetworkMain)
     manager.use(SettingFactoryMain)
     manager.use(StorageMain)
 
@@ -324,6 +328,7 @@ export function bootstrap() {
     // application specific shards
     manager.use(ClientInstallationMain)
     manager.use(WindowManagerMain)
+    manager.use(MainWindowUiMain)
     manager.use(TrayMain)
     manager.use(KeyboardShortcutsMain)
     manager.use(SelfUpdateMain)
@@ -334,6 +339,7 @@ export function bootstrap() {
     manager.use(AutoGameflowMain)
     manager.use(AutoMiscMain)
     manager.use(AutoSelectMain)
+    manager.use(ChampionDataMain)
     manager.use(InGameSendMain)
     manager.use(OngoingGameMain)
     manager.use(RespawnTimerMain)

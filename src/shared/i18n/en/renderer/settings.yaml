@@ -100,22 +100,26 @@ settings:
         description: Set the main window background mode
         options:
           profileSkin: Champion Background
-          none: None
-          mica: Mica
+          customImage: Custom Wallpaper
+          none: Default
+          system: System Material
         tooltips:
           profileSkin: Use the current player's profile background skin as the main window background
-          mica: Available only on newer Windows versions. If unsupported on the current platform, it falls back to None
-          micaUnsupported: Mica is not supported on the current platform and will fall back to None
-      useProfileSkinAsBackground:
-        label: Use Profile Skin as Background
-        description: $t(common:appName) will use the current player's profile background skin as the background. If the background texture is set, this option will not take effect
+          system: Uses Mica on Windows and native window blur on macOS. Falls back to the default solid background when unavailable or if activation fails
+      customBackground:
+        label: Custom Wallpaper
+        description: Use a fixed local image or video as the background. The wallpaper is center-cropped
+        filePath: File Path
+        filePlaceholder: No wallpaper file selected
+        browse: Browse
+        overlayStrength: Overlay Depth
       backgroundMaterial:
         label: Background Material
         description: Set the background material of the application interface, requires specific system version support
         options:
           none: None
-          mica: Mica
-          micaUnsupported: Mica (Unsupported)
+          system: System Material
+          systemUnsupported: System Material (Unsupported)
     lcConnection:
       title: LCU Connection
       autoConnect:
@@ -128,6 +132,21 @@ settings:
         label: Rebuild WMI
         description: If WMIC does not work properly, try this
         rebuildButton: Rebuild WMI
+    httpProxy:
+      title: Network Proxy
+      strategy:
+        label: HTTP Proxy
+        description: Configure the proxy for network requests throughout the app, including data, images, and update downloads. Local client connections are unaffected
+        options:
+          fixed-servers: Manual Proxy
+          system: Follow System
+          direct: Off
+      host:
+        label: Proxy Host
+        description: The host of the proxy server
+      port:
+        label: Proxy Port
+        description: The port of the proxy server
     misc:
       title: Misc
       logLevel:
@@ -143,20 +162,6 @@ settings:
         enableConfirmation: Will enable hardware acceleration, restart the application to apply changes
         positiveText: Restart and Quit
         negativeText: Cancel
-      httpProxy:
-        strategy:
-          label: HTTP Proxy
-          description: Set the HTTP proxy. All network requests except LCU HTTP will be routed through this proxy
-          options:
-            force: Use Proxy
-            auto: Auto
-            disable: Disable
-        host:
-          label: Proxy Host
-          description: The host of the proxy server
-        port:
-          label: Proxy Port
-          description: The port of the proxy server
       uninstallApp:
         label: Uninstall Application
         description: Uninstall the application, which will delete all data and configurations
@@ -288,32 +293,32 @@ settings:
       opacity:
         label: Window Opacity
         description: Adjust the transparency level of the auxiliary window.
-      showSkinSelector:
-        label: Skin Selector
-        description: Display a quick access skin selection tool in the auxiliary window.
       resetWindowPosition:
         label: Reset Window Position
         description: Reset the position of the auxiliary window to its default location in the center of the main screen.
         button: Reset
     opggWindow:
-      title: OP.GG Window
+      title: Champion Data Window
       enabled:
-        label: Enable OP.GG Features
-        description: Use the OP.GG window to view detailed player information and match history
-        descriptionWithIcon: Can be opened by clicking the quick icon on the right side of the title bar ({icon}) or by right-clicking the tray icon and selecting "OP.GG Window").
+        label: Enable Champion Data
+        description: View champion data from OP.GG or 101 (CN)
+        descriptionWithIcon: Open it from the quick icon on the right side of the title bar ({icon}) or from "Champion Data Window" in the tray menu.
       autoShow:
         label: Auto Show and Close
-        description: Automatically show or close the OP.GG window during specific game phases.
+        description: Automatically show or close the champion data window during specific game phases.
       opacity:
         label: Window Opacity
-        description: Adjust the transparency level of the OP.GG window.
+        description: Adjust the transparency level of the champion data window.
       resetWindowPosition:
         label: Reset Window Position
-        description: Reset the position of the OP.GG window to its default location in the center of the main screen.
+        description: Reset the position of the champion data window to its default location in the center of the main screen.
         button: Reset
       showShortcut:
         label: Show Shortcut
-        description: Use the shortcut key to show or hide the OP.GG window. If the game is in the foreground, it will automatically get pinned. Make sure the game is in borderless or windowed mode for this window to display correctly.
+        description: Use the shortcut key to show or hide the champion data window. If the game is in the foreground, it will automatically get pinned. Make sure the game is in borderless or windowed mode for this window to display correctly.
+      showSkinSelector:
+        label: Skin Selector
+        description: Display quick skin selection in the champion select assistant.
     ongoingGameWindow:
       title: Ongoing Game Overlay Window
       titleRequireAdmin: Ongoing Game Overlay Window (Admin Required)
