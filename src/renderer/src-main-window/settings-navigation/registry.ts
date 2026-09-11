@@ -878,20 +878,20 @@ const targetDefinitions = [
     descriptionKey: 'automation.champSelect.championSwap.enabled.description'
   },
   {
-    id: 'automation.champ-select.champion-swap.auto-decline-repeated',
-    route: { name: 'automation', section: 'auto-select' },
-    parentId: 'automation.champ-select.champion-swap',
-    fallbackId: 'automation.champ-select',
-    labelKey: 'automation.champSelect.championSwap.autoDeclineRepeated.label',
-    descriptionKey: 'automation.champSelect.championSwap.autoDeclineRepeated.description'
-  },
-  {
     id: 'automation.champ-select.champion-swap.friends',
     route: { name: 'automation', section: 'auto-select' },
     parentId: 'automation.champ-select.champion-swap',
     fallbackId: 'automation.champ-select',
     labelKey: 'automation.champSelect.championSwap.friends.label',
     descriptionKey: 'automation.champSelect.championSwap.friends.description'
+  },
+  {
+    id: 'automation.champ-select.champion-swap.auto-decline-repeated',
+    route: { name: 'automation', section: 'auto-select' },
+    parentId: 'automation.champ-select.champion-swap',
+    fallbackId: 'automation.champ-select',
+    labelKey: 'automation.champSelect.championSwap.autoDeclineRepeated.label',
+    descriptionKey: 'automation.champSelect.championSwap.autoDeclineRepeated.description'
   },
   {
     id: 'automation.champ-select.ban',

@@ -16,6 +16,7 @@
       <div class="action-controls" :class="{ 'is-compact': compact }">
         <div
           v-if="
+            titleModel.showCurrentGameControls &&
             appCommon.settings.preferredLolSource === 'sgp' &&
             sgp.availability.serversSupported.matchHistory
           "
@@ -73,7 +74,7 @@
           {{ t('ongoingGame.titlebar.refreshPrevious') }}
         </NTooltip>
 
-        <NTooltip :z-index="TITLEBAR_TOOLTIP_Z_INDEX">
+        <NTooltip v-if="titleModel.showCurrentGameControls" :z-index="TITLEBAR_TOOLTIP_Z_INDEX">
           <template #trigger>
             <NButton
               class="refresh-button"
@@ -347,11 +348,19 @@ const draftTitleItems = computed<TitleItem[]>(() => {
   return items
 })
 
+const isPreviousTabActive = computed(() => previousGameStore.activeTab === 'previous')
+
 const titleModel = computed(() => {
   const isDraft = Boolean(ogs.draft)
 
   return {
-    visible: ogs.queryStage.phase !== 'unavailable' && !isCsSpectateWait.value,
+    // “上一局”tab 激活时标题栏保持可见（刷新按钮挂在标题栏上），
+    // 否则遵循当前对局的可见性逻辑
+    visible:
+      isPreviousTabActive.value ||
+      (ogs.queryStage.phase !== 'unavailable' && !isCsSpectateWait.value),
+    // 队列标签选择与当前对局刷新只属于“当前对局”tab
+    showCurrentGameControls: !isPreviousTabActive.value,
     items: isDraft ? draftTitleItems.value : liveTitleItems.value,
     mapIconUri: isDraft ? null : lcs.gameflow.session?.map?.assets?.['game-select-icon-hover'],
     showDraftIcon: isDraft,

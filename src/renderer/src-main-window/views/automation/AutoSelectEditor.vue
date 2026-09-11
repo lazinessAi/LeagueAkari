@@ -429,26 +429,6 @@
           </SettingsRow>
 
           <SettingsRow
-            setting-id="automation.champ-select.champion-swap.auto-decline-repeated"
-            :label="t('automation.champSelect.championSwap.autoDeclineRepeated.label')"
-            :label-description="
-              t('automation.champSelect.championSwap.autoDeclineRepeated.description')
-            "
-            :label-width="260"
-          >
-            <NSwitch
-              size="small"
-              :value="currentPickConfig.autoDeclineRepeatedChampionSwapEnabled"
-              @update:value="
-                (val) =>
-                  as.setPickConfig(currentGroup!.groupId, {
-                    autoDeclineRepeatedChampionSwapEnabled: val
-                  })
-              "
-            />
-          </SettingsRow>
-
-          <SettingsRow
             v-if="currentPickConfig.acceptChampionSwapFromFriendsEnabled"
             setting-id="automation.champ-select.champion-swap.friends"
             :label="t('automation.champSelect.championSwap.friends.label')"
@@ -523,6 +503,26 @@
                 </NScrollbar>
               </div>
             </div>
+          </SettingsRow>
+
+          <SettingsRow
+            setting-id="automation.champ-select.champion-swap.auto-decline-repeated"
+            :label="t('automation.champSelect.championSwap.autoDeclineRepeated.label')"
+            :label-description="
+              t('automation.champSelect.championSwap.autoDeclineRepeated.description')
+            "
+            :label-width="260"
+          >
+            <NSwitch
+              size="small"
+              :value="currentPickConfig.autoDeclineRepeatedChampionSwapEnabled"
+              @update:value="
+                (val) =>
+                  as.setPickConfig(currentGroup!.groupId, {
+                    autoDeclineRepeatedChampionSwapEnabled: val
+                  })
+              "
+            />
           </SettingsRow>
         </NTabPane>
       </NTabs>
