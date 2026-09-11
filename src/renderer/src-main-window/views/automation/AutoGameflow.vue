@@ -333,12 +333,33 @@
             v-if="store.settings.onlyAcceptInvitationFromFriends"
             setting-id="automation.gameflow.invitations.friend-whitelist"
             :label="t('automation.gameflow.acceptInvitationFriendWhitelist.label')"
-            :label-description="
-              t('automation.gameflow.acceptInvitationFriendWhitelist.description')
-            "
             :label-width="260"
             align="start"
           >
+            <template #labelDescription>
+              <div>
+                {{ t('automation.gameflow.acceptInvitationFriendWhitelist.description') }}
+              </div>
+              <div class="mt-2">
+                <NScrollbar v-if="whitelistEntries.length > 0" class="max-h-40">
+                  <div class="flex flex-wrap gap-1.5 pr-1">
+                    <NTag
+                      v-for="entry in whitelistEntries"
+                      :key="entry.summonerId"
+                      size="small"
+                      :bordered="false"
+                      closable
+                      @close="removeFromWhitelist(entry.summonerId)"
+                    >
+                      {{ entry.name }}
+                    </NTag>
+                  </div>
+                </NScrollbar>
+                <div v-else class="text-[13px] text-black/50 dark:text-white/50">
+                  {{ t('automation.gameflow.acceptInvitationFriendWhitelist.emptyHint') }}
+                </div>
+              </div>
+            </template>
             <div class="w-full max-w-100">
               <div
                 v-if="!lcs.isConnected"
@@ -371,7 +392,13 @@
                     <div
                       v-for="friend in filteredSortedFriends"
                       :key="friend.puuid"
-                      class="flex items-center gap-3 rounded-md border border-black/10 py-1.5 pr-4 pl-2.5 dark:border-white/10"
+                      class="flex cursor-pointer items-center gap-3 rounded-md border py-1.5 pr-4 pl-2.5 transition-colors"
+                      :class="
+                        isWhitelisted(friend.summonerId)
+                          ? 'border-akari-500/35 bg-akari-500/7 hover:bg-akari-500/12 dark:border-akari-400/30 dark:bg-akari-400/10 dark:hover:bg-akari-400/16'
+                          : 'border-black/10 hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/5'
+                      "
+                      @click="toggleWhitelist(friend)"
                     >
                       <div class="relative">
                         <LcuImage
@@ -397,6 +424,7 @@
                       <NCheckbox
                         :checked="isWhitelisted(friend.summonerId)"
                         @update:checked="() => toggleWhitelist(friend)"
+                        @click.stop
                       />
                     </div>
                     <div
@@ -487,7 +515,8 @@ import {
   NRadio,
   NRadioGroup,
   NScrollbar,
-  NSwitch
+  NSwitch,
+  NTag
 } from 'naive-ui'
 import { computed } from 'vue'
 
@@ -545,6 +574,16 @@ const filteredSortedFriends = computed(() => {
 const isWhitelisted = (summonerId: number) => {
   return store.settings.acceptInvitationFriendWhitelist.some(
     (entry) => entry.summonerId === summonerId
+  )
+}
+
+const whitelistEntries = computed(() => store.settings.acceptInvitationFriendWhitelist)
+
+const removeFromWhitelist = (summonerId: number) => {
+  shard.setAcceptInvitationFriendWhitelist(
+    store.settings.acceptInvitationFriendWhitelist.filter(
+      (entry) => entry.summonerId !== summonerId
+    )
   )
 }
 

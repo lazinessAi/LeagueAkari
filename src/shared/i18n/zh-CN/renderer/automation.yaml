@@ -94,6 +94,7 @@ automation:
     acceptInvitationFriendWhitelist:
       label: 好友白名单
       description: 勾选允许自动接受其邀请的好友
+      emptyHint: 在此处显示已选好友，可在右侧勾选添加
       searchPlaceholder: 搜索好友
       unavailable: 未连接到客户端，无法加载好友列表
       noFriends: 没有找到好友
