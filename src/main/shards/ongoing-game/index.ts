@@ -199,7 +199,6 @@ export class OngoingGameMain implements IAkariShardInitDispose {
       'championSelections',
       'positionAssignments',
       'analysis',
-      'previousGame',
       'queryStage',
       'teams',
       'isInEog',

@@ -3,10 +3,13 @@ ongoingGame:
     current: Current Game
     previous: Previous Game
     noPrevious: No previous game record
+    loadFailed: Failed to load the previous game
+    retry: Retry
   titlebar:
     draftMode: Draft Mode
     exitDraft: Exit Draft Mode
     refresh: Refresh
+    refreshPrevious: Refresh Previous Game
     spectating: Spectating
     settings:
       title: Ongoing Game Display

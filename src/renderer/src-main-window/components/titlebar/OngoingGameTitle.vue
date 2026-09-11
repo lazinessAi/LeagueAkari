@@ -51,6 +51,28 @@
           {{ t('ongoingGame.titlebar.exitDraft') }}
         </NTooltip>
 
+        <NTooltip
+          v-if="previousGameStore.activeTab === 'previous'"
+          :z-index="TITLEBAR_TOOLTIP_Z_INDEX"
+        >
+          <template #trigger>
+            <NButton
+              class="refresh-previous-game-button"
+              secondary
+              circle
+              size="tiny"
+              :loading="previousGameStore.isLoading"
+              :aria-label="t('ongoingGame.titlebar.refreshPrevious')"
+              @click="handleRefreshPreviousGame"
+            >
+              <template #icon>
+                <NIcon><RefreshIcon /></NIcon>
+              </template>
+            </NButton>
+          </template>
+          {{ t('ongoingGame.titlebar.refreshPrevious') }}
+        </NTooltip>
+
         <NTooltip :z-index="TITLEBAR_TOOLTIP_Z_INDEX">
           <template #trigger>
             <NButton
@@ -154,12 +176,15 @@ import {
   TuneRound as TuneIcon
 } from '@vicons/material'
 import { useTranslation } from 'i18next-vue'
-import { NButton, NIcon, NPopover, NSelect, NSwitch, NTooltip } from 'naive-ui'
+import { useMessage, NButton, NIcon, NPopover, NSelect, NSwitch, NTooltip } from 'naive-ui'
 import { computed, useTemplateRef } from 'vue'
 
 import { navigateToSetting } from '@main-window/settings-navigation'
+import { PreviousGameRenderer } from '@main-window/shards/previous-game'
+import { usePreviousGameStore } from '@main-window/shards/previous-game/store'
 
 const { t } = useTranslation()
+const message = useMessage()
 
 const TITLEBAR_TOOLTIP_Z_INDEX = 75000
 
@@ -167,6 +192,8 @@ defineProps<{ compact: boolean }>()
 
 const ogs = useOngoingGameStore()
 const og = useInstance(OngoingGameRenderer)
+const previousGame = useInstance(PreviousGameRenderer)
+const previousGameStore = usePreviousGameStore()
 const lcs = useLeagueClientStore()
 const appCommon = useAppCommonStore()
 const sgp = useSgpStore()
@@ -237,6 +264,14 @@ const handleSgpTagChange = (val: string) => {
 
 const handleOpenOngoingGameSettings = () => {
   void navigateToSetting(navigation, 'ongoing-game.common')
+}
+
+const handleRefreshPreviousGame = async () => {
+  const result = await previousGame.refresh()
+
+  if (!result.ok && previousGameStore.snapshot) {
+    message.error(t('ongoingGame.tabs.loadFailed'))
+  }
 }
 
 const teamNameMap = computed(() => ({
@@ -353,6 +388,10 @@ const titleModel = computed(() => {
 }
 
 .refresh-button {
+  -webkit-app-region: no-drag;
+}
+
+.refresh-previous-game-button {
   -webkit-app-region: no-drag;
 }
 

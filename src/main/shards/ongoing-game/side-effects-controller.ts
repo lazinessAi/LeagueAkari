@@ -24,10 +24,6 @@ export class OngoingGameSideEffectsController {
       () => isInEndOfGame.get(),
       async (yes) => {
         if (yes) {
-          if (state.capturePreviousGame()) {
-            logger.info('Captured completed ongoing game for previous-game view')
-          }
-
           if (
             !leagueClient.state.auth ||
             !leagueClient.data.summoner.me ||

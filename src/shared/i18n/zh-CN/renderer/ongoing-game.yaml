@@ -3,10 +3,13 @@ ongoingGame:
     current: 当前对局
     previous: 上一局
     noPrevious: 暂无上一局记录
+    loadFailed: 获取上一局失败
+    retry: 重试
   titlebar:
     draftMode: 草稿模式
     exitDraft: 退出草稿模式
     refresh: 刷新对局页面
+    refreshPrevious: 刷新上一局
     spectating: 观战中
     settings:
       title: 对局页面显示

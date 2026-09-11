@@ -10,8 +10,7 @@ import type {
   OngoingGamePanelOrderPlayerBy,
   OngoingGamePanelPlayerCardTagSettings,
   OngoingGameSettingsData,
-  OngoingGameSimplifiedChampMastery,
-  OngoingGameSnapshot
+  OngoingGameSimplifiedChampMastery
 } from '@shared/shards/ongoing-game'
 import { createDefaultOngoingGamePanelPlayerCardTagSettings } from '@shared/shards/ongoing-game/settings'
 import type { SavedInfo } from '@shared/shards/saved-player'
@@ -218,45 +217,6 @@ export class OngoingGameState {
 
   analysis: OngoingGameAnalysis | null = null
 
-  previousGame: OngoingGameSnapshot | null = null
-
-  capturePreviousGame() {
-    if (this.queryStage.phase !== 'in-game') {
-      return false
-    }
-
-    const cachedGames = Object.fromEntries([
-      ...Object.values(this.matchHistory).flatMap((entry) =>
-        entry.data.map((game) => [game.gameId, game] as const)
-      ),
-      ...Object.values(this.additionalGame).map((game) => [game.gameId, game] as const)
-    ])
-
-    this.previousGame = structuredClone({
-      capturedAt: Date.now(),
-      selfPuuid: this._leagueClientData.summoner.me?.puuid ?? null,
-      queryStage: this.queryStage,
-      teams: this.teams,
-      championSelections: this.championSelections,
-      positionAssignments: this.positionAssignments,
-      mergedPremadeTeamMap: this.mergedPremadeTeamMap,
-      teamParticipantGroups: this.teamParticipantGroups,
-      analysis: this.analysis,
-      matchHistoryTagParams: this.matchHistoryTagParams,
-      matchHistory: this.matchHistory,
-      matchHistoryLoadingState: this.matchHistoryLoadingState,
-      summoner: this.summoner,
-      rankedStats: this.rankedStats,
-      championMastery: this.championMastery,
-      savedInfo: this.savedInfo,
-      cachedGames,
-      gameDetails: this.gameDetails,
-      additional: this.additional
-    } satisfies OngoingGameSnapshot)
-
-    return true
-  }
-
   setAnalysis(value: OngoingGameAnalysis | null) {
     this.analysis = value
   }
@@ -433,7 +393,6 @@ export class OngoingGameState {
       positionAssignments: computedStruct,
       teams: computedStruct,
       analysis: observableStruct,
-      previousGame: observableRef,
       queryStage: computedStruct,
       teamParticipantGroups: computedStruct,
       draft: observableStruct,

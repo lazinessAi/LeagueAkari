@@ -13,7 +13,7 @@
       @dry-run-ongoing-game="handleDryRunOngoingGame"
     />
     <NTabs
-      v-model:value="activeTab"
+      v-model:value="pgs.activeTab"
       class="ongoing-game-tabs"
       type="line"
       size="small"
@@ -31,7 +31,7 @@
       </NTabPane>
 
       <NTabPane name="previous" :tab="t('ongoingGame.tabs.previous')" display-directive="show">
-        <OngoingGameProvider v-if="previousGame" :value="previousGame">
+        <OngoingGameProvider v-if="previousGameProvider" :value="previousGameProvider">
           <OngoingGamePanel
             :content-width="contentWidth"
             :content-height="panelContentHeight"
@@ -40,7 +40,19 @@
           />
         </OngoingGameProvider>
         <div v-else class="flex h-full items-center justify-center">
-          <NEmpty size="small" :description="t('ongoingGame.tabs.noPrevious')" />
+          <NSpin v-if="pgs.isLoading" size="small" />
+          <NEmpty
+            v-else-if="pgs.loadError"
+            size="small"
+            :description="t('ongoingGame.tabs.loadFailed')"
+          >
+            <template #extra>
+              <NButton size="tiny" secondary @click="refreshPreviousGame">
+                {{ t('ongoingGame.tabs.retry') }}
+              </NButton>
+            </template>
+          </NEmpty>
+          <NEmpty v-else size="small" :description="t('ongoingGame.tabs.noPrevious')" />
         </div>
       </NTabPane>
     </NTabs>
@@ -63,26 +75,27 @@ import {
 import { useInstance } from '@renderer-shared/shards'
 import { useAppCommonStore } from '@renderer-shared/shards/app-common/store'
 import { OngoingGameRenderer } from '@renderer-shared/shards/ongoing-game'
-import { useOngoingGameStore } from '@renderer-shared/shards/ongoing-game/store'
 import { DraftOptions } from '@shared/shards/ongoing-game'
 import { useTranslation } from 'i18next-vue'
-import { NEmpty, NTabPane, NTabs } from 'naive-ui'
-import { computed, ref, shallowRef, watch } from 'vue'
+import { NButton, NEmpty, NTabPane, NTabs, NSpin } from 'naive-ui'
+import { computed, ref, shallowRef } from 'vue'
 
 import { useMainWindowAppContext } from '@main-window/context'
 import { PlayerTabsRenderer } from '@main-window/shards/player-tabs'
+import { PreviousGameRenderer } from '@main-window/shards/previous-game'
+import { usePreviousGameStore } from '@main-window/shards/previous-game/store'
 
 const { contentWidth, contentHeight } = useMainWindowAppContext()
 
 const pt = useInstance(PlayerTabsRenderer)
 const og = useInstance(OngoingGameRenderer)
-const ogStore = useOngoingGameStore()
+const previousGame = useInstance(PreviousGameRenderer)
+const pgs = usePreviousGameStore()
 const { t } = useTranslation()
 const ongoingGame = createAkariOngoingGameProvider()
-const activeTab = ref<'current' | 'previous'>('current')
 const panelContentHeight = computed(() => Math.max(0, contentHeight.value - 40))
-const previousGame = computed(() => {
-  return ogStore.previousGame ? createAkariPreviousGameProvider(ogStore.previousGame) : null
+const previousGameProvider = computed(() => {
+  return pgs.snapshot ? createAkariPreviousGameProvider(pgs.snapshot) : null
 })
 
 const as = useAppCommonStore()
@@ -105,14 +118,9 @@ const handleDryRunOngoingGame = async (draft: DraftOptions) => {
   showPreviewModal.value = false
 }
 
-watch(
-  () => ogStore.previousGame,
-  (previousGame) => {
-    if (previousGame) {
-      activeTab.value = 'previous'
-    }
-  }
-)
+const refreshPreviousGame = () => {
+  void previousGame.refresh()
+}
 </script>
 
 <style scoped>
