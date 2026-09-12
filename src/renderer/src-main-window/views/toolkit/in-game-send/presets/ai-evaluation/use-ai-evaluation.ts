@@ -401,7 +401,7 @@ export function useAiEvaluation() {
     }
   }
 
-  async function evaluatePlayer(entry: AiEvaluationPlayerEntry) {
+  async function evaluatePlayer(entry: AiEvaluationPlayerEntry, playerLevel?: number | null) {
     entry.status = 'fetching'
 
     try {
@@ -418,12 +418,19 @@ export function useAiEvaluation() {
 
       entry.status = 'analyzing'
 
+      const itemNames: Record<number, string> = {}
+      for (const [id, item] of Object.entries(lcStore.gameData.items)) {
+        itemNames[Number(id)] = item.name
+      }
+
       const report = buildAramMayhemReport({
         playerName: entry.name,
         playerPuuid: entry.puuid,
+        playerLevel,
         games,
         champions: lcStore.gameData.champions,
-        kiwiAugments: extraAssetsStore.kiwiAugmentsMap
+        kiwiAugments: extraAssetsStore.kiwiAugmentsMap,
+        itemNames
       })
 
       if (!report) {
@@ -483,7 +490,7 @@ export function useAiEvaluation() {
 
     await runWithConcurrency(
       row.evaluations.map((entry) => async () => {
-        await evaluatePlayer(entry)
+        await evaluatePlayer(entry, ogs.summoner[entry.puuid]?.summonerLevel ?? null)
       }),
       AI_EVALUATION_CONCURRENCY
     )
@@ -557,7 +564,7 @@ export function useAiEvaluation() {
         : summoner.gameName
       : manual.entry.name
 
-    await evaluatePlayer(manual.entry)
+    await evaluatePlayer(manual.entry, summoner.level ?? null)
   }
 
   function sendManualReply() {

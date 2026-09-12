@@ -59,6 +59,7 @@ export interface AramMayhemReport {
   championPool: { distinct: number; table: Record<string, any>[] }
   augmentStats: { avgPerGame: number; table: Record<string, any>[] }
   winTrading: Record<string, any>
+  smurf: Record<string, any>
 }
 
 const BUCKETS = ['carry', 'tank', 'support', 'other'] as const
@@ -117,11 +118,14 @@ function teamTowerKills(game: AramMayhemGameJson, teamId: number): number {
 export function buildAramMayhemReport(args: {
   playerName: string
   playerPuuid: string
+  playerLevel?: number | null
   games: AramMayhemGameJson[]
   champions: Record<number, AramMayhemChampionInfo>
   kiwiAugments: Record<number, AramMayhemKiwiAugmentInfo>
+  /** 物品 id -> 名称（守护者出门装识别用），不可得时该信号不计分 */
+  itemNames?: Record<number, string>
 }): AramMayhemReport | null {
-  const { playerName, playerPuuid, games, champions, kiwiAugments } = args
+  const { playerName, playerPuuid, playerLevel, games, champions, kiwiAugments, itemNames } = args
 
   const perGame = games.map((game) => {
     const me =
@@ -180,6 +184,13 @@ export function buildAramMayhemReport(args: {
       .map((i) => stat(me, `playerAugment${i}`))
       .filter((id) => id && kiwiAugments[id])
 
+    const item0 = stat(me, 'item0')
+    const item0Name = item0 ? itemNames?.[item0] : undefined
+    const guardianStart = !!item0Name && item0Name.startsWith('守护者')
+    const FLASH_SPELL_ID = 4
+    const flashOnD = stat(me, 'spell1Id') === FLASH_SPELL_ID
+    const flashOnF = stat(me, 'spell2Id') === FLASH_SPELL_ID
+
     const surrendered = !!(stat(me, 'gameEndedInSurrender') || stat(me, 'gameEndedInIGNBSurrender'))
     const teamGoldAll = teamGold + enemyGold
     const teamKillsAll = teamKills + enemyKills
@@ -232,6 +243,11 @@ export function buildAramMayhemReport(args: {
       killShareAll: teamKillsAll > 0 ? round(teamKills / teamKillsAll, 3) : 0.5,
       towerLead:
         teamTowerKills(game, me.teamId) - teamTowerKills(game, me.teamId === 100 ? 200 : 100),
+      ownTowerKills: teamTowerKills(game, me.teamId),
+      guardianStart,
+      flashOnD,
+      flashOnF,
+      alliesChampionIds: allies.map((p) => p.championId),
       teammates: allies
         .filter((p) => p.participantId !== me.participantId)
         .map((p) => p.puuid ?? String(p.participantId)),
@@ -395,6 +411,70 @@ export function buildAramMayhemReport(args: {
     suspicionProbability = 0.1
   }
 
+  // 低嫌疑（<中）不对外展示
+  if (suspicionProbability < 0.6) {
+    suspicionLevel = 'none'
+    suspicionProbability = 0
+  }
+
+  // 小号嫌疑（启发式，积分制）
+  // S1 成长断层：近段(最近25场) vs 远段(更早25场) 胜率差≥25pp 或 伤转率差≥30pp（两段各≥10场才有效）
+  // S2 低等级（分级计分）：<100 计1；≤50 计2；≤30 计3；≤10 计4
+  // S3 守护者出门装：item0 名以"守护者"开头的场次 ≥3
+  // S4 闪现异位：D 闪与 F 闪同时存在
+  const recentGames = entries.slice(0, 25)
+  const remoteGames = entries.slice(25, 50)
+  const segmentsValid = recentGames.length >= 10 && remoteGames.length >= 10
+  const recentWR = segmentsValid ? mean(recentGames.map((g) => (g.win ? 1 : 0))) : 0
+  const remoteWR = segmentsValid ? mean(remoteGames.map((g) => (g.win ? 1 : 0))) : 0
+  const winRateGap = segmentsValid ? round((recentWR - remoteWR) * 100, 1) : 0
+  const dmgEffGap = segmentsValid
+    ? round(
+        (mean(recentGames.map((g) => g.damageGoldEfficiency)) -
+          mean(remoteGames.map((g) => g.damageGoldEfficiency))) *
+          100,
+        1
+      )
+    : 0
+  const growthCliff = segmentsValid && (recentWR - remoteWR >= 0.25 || dmgEffGap >= 30)
+
+  let levelScore = 0
+  if (playerLevel != null) {
+    if (playerLevel < 100) levelScore = 1
+    if (playerLevel <= 50) levelScore = 2
+    if (playerLevel <= 30) levelScore = 3
+    if (playerLevel <= 10) levelScore = 4
+  }
+
+  const guardianStartCount = entries.filter((g) => g.guardianStart).length
+  const guardianStartHit = guardianStartCount >= 3
+  const flashSwap = entries.some((g) => g.flashOnD) && entries.some((g) => g.flashOnF)
+
+  let smurfScore =
+    (growthCliff ? 1 : 0) + levelScore + (guardianStartHit ? 1 : 0) + (flashSwap ? 1 : 0)
+  let smurfSuspicionLevel: AiEvaluationSuspicionLevel = 'none'
+  let smurfSuspicionProbability = 0
+  if (smurfScore >= 3) {
+    smurfSuspicionLevel = 'high'
+    smurfSuspicionProbability = 0.85
+  } else if (smurfScore === 2) {
+    smurfSuspicionLevel = 'medium'
+    smurfSuspicionProbability = 0.6
+  } else if (smurfScore === 1) {
+    smurfSuspicionLevel = 'low'
+    smurfSuspicionProbability = 0.3
+  }
+
+  // 低嫌疑（<中）不对外展示；大概率刷负时跳过小号判断——4/5 黑刷负的数据特征会大量命中小号信号，但并非小号
+  if (suspicionProbability >= 0.85) {
+    smurfScore = 0
+    smurfSuspicionLevel = 'none'
+    smurfSuspicionProbability = 0
+  } else if (smurfSuspicionProbability < 0.6) {
+    smurfSuspicionLevel = 'none'
+    smurfSuspicionProbability = 0
+  }
+
   return {
     player: playerName,
     sampleSize: n,
@@ -464,6 +544,22 @@ export function buildAramMayhemReport(args: {
       towerLeadSurrenderRate,
       suspicionLevel,
       suspicionProbability
+    },
+    smurf: {
+      heuristicNote:
+        '积分制：S1 成长断层(近25场vs更早25场胜率差≥25pp或伤转率差≥30pp，两段各≥10场)+1；S2 低等级(<100)+1/≤50+2/≤30+3/≤10+4；S3 守护者出门装≥3场+1；S4 闪现异位+1。总分 1=低(30%) 2=中(60%) ≥3=高(85%)。刷负高嫌疑时不做小号判断（数据特征重叠会误判）；低嫌疑不展示',
+      score: smurfScore,
+      signals: {
+        growthCliff,
+        winRateGap,
+        damageGoldEfficiencyGap: dmgEffGap,
+        playerLevel: playerLevel ?? null,
+        levelScore,
+        guardianStartCount,
+        flashSwap
+      },
+      suspicionLevel: smurfSuspicionLevel,
+      suspicionProbability: smurfSuspicionProbability
     }
   }
 }
