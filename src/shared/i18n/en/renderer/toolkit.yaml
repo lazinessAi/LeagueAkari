@@ -498,6 +498,10 @@ toolkit:
           noActiveModel: No AI model configured or activated
           running: Fetching and evaluating
           notReady: Run the dry run first
+        teamContext:
+          lobby: Lobby
+          champSelect: Champion Select
+          inGame: In Game
         lowSampleReply: 'Insufficient sample ({{count}} games); cannot produce a reliable AI evaluation'
         playerStatus:
           pending: Waiting

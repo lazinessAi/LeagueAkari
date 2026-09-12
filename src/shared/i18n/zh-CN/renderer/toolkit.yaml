@@ -498,6 +498,10 @@ toolkit:
           noActiveModel: 未配置或未激活 AI 模型
           running: 正在获取与评价中
           notReady: 请先完成试运行
+        teamContext:
+          lobby: 房间
+          champSelect: 英雄选择
+          inGame: 游戏中
         lowSampleReply: 样本不足（{{count}} 场），无法给出可靠的 AI 评价
         playerStatus:
           pending: 等待中

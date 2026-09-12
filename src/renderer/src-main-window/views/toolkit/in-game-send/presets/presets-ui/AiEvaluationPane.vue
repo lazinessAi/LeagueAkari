@@ -102,7 +102,13 @@
         >
           <div class="mb-1.5 flex items-center justify-between gap-2">
             <div class="flex items-center gap-1.5 text-xs font-semibold">
-              <span>{{ group.label }}</span>
+              <div
+                class="size-2.5 shrink-0 rounded-full border border-white/20 bg-current opacity-40"
+              />
+              <span>{{ tTeams(group.isOwnTeam ? 'friendly' : 'enemy') }}</span>
+              <span v-if="phaseContextLabel" class="font-normal text-black/45 dark:text-white/45">
+                · {{ phaseContextLabel }}
+              </span>
               <span class="font-normal text-black/45 dark:text-white/45">
                 ({{ group.selectedCount }}/{{ group.members.length }})
               </span>
@@ -213,27 +219,32 @@
       <div class="flex w-full items-center gap-2">
         <NInput
           v-model:value="manual.input"
+          class="min-w-0 flex-1"
           size="small"
           :placeholder="t('manual.placeholder')"
           :disabled="manualRunning"
           @keydown.enter="runManualEvaluation"
         />
-        <NPopover :disabled="!manualQueryDisabledReason" trigger="hover">
+        <NPopover :disabled="!manualQueryDisabledReason()" trigger="hover">
           <template #trigger>
             <NButton
               size="small"
               secondary
               :loading="manualRunning"
-              :disabled="!!manualQueryDisabledReason"
+              :disabled="!!manualQueryDisabledReason()"
               @click="runManualEvaluation"
             >
               {{ t('manual.query') }}
             </NButton>
           </template>
-          {{ manualQueryDisabledReason }}
+          {{ manualQueryDisabledReason() }}
         </NPopover>
       </div>
     </SettingsRow>
+
+    <div v-if="manual.errorMessage" class="mt-1 text-xs text-red-600 dark:text-red-400">
+      {{ manual.errorMessage }}
+    </div>
 
     <div
       v-if="manual.entry"
@@ -275,6 +286,7 @@ import SettingsRow from '@renderer-shared/components/SettingsRow.vue'
 import { profileIconUri } from '@renderer-shared/shards/league-client/game-data-assets'
 import { InGameSendRenderer } from '@renderer-shared/shards/in-game-send'
 import { useInGameSendStore } from '@renderer-shared/shards/in-game-send/store'
+import { useOngoingGameStore } from '@renderer-shared/shards/ongoing-game/store'
 import { useInstance } from '@renderer-shared/shards'
 import { useAppCommonStore } from '@renderer-shared/shards/app-common/store'
 import { useStreamerModeMaskedText } from '@renderer-shared/composables/useStreamerModeMaskedText'
@@ -285,6 +297,7 @@ import { DocumentText24Regular as DryRunIcon, Send24Filled as SendIcon } from '@
 import { useTranslation } from 'i18next-vue'
 import {
   NButton,
+  NCheckbox,
   NCollapse,
   NCollapseItem,
   NDivider,
@@ -309,12 +322,13 @@ const { t } = useTranslation('renderer', { keyPrefix: 'toolkit.inGameSend.preset
 const { t: tSelection } = useTranslation('renderer', {
   keyPrefix: 'toolkit.inGameSend.presets.selection'
 })
-const { t: tTargets } = useTranslation('renderer', {
-  keyPrefix: 'toolkit.inGameSend.presets.targets'
+const { t: tTeams } = useTranslation('renderer', { keyPrefix: 'toolkit.inGameSend.presets.teams' })
+const { t: tAi } = useTranslation('renderer', {
+  keyPrefix: 'toolkit.inGameSend.presets.aiEvaluation'
 })
-
 const message = useMessage()
 const as = useAppCommonStore()
+const ogs = useOngoingGameStore()
 const { masked } = useStreamerModeMaskedText()
 
 const {
@@ -358,8 +372,23 @@ function targetDescription(target: { id: AiEvaluationTargetId; description: stri
   return `${target.description} · ${t('teamsCount', { count })}`
 }
 
+const phaseContextLabel = computed(() => {
+  switch (ogs.queryStage.phase) {
+    case 'lobby':
+      return tAi('teamContext.lobby')
+    case 'draft':
+    case 'champ-select':
+      return tAi('teamContext.champSelect')
+    case 'in-game':
+      return tAi('teamContext.inGame')
+    default:
+      return ''
+  }
+})
+
 const playerGroups = computed(() => {
   const groups: {
+    isOwnTeam: boolean
     label: string
     members: {
       puuid: string
@@ -377,7 +406,8 @@ const playerGroups = computed(() => {
     if (!members.length) continue
 
     groups.push({
-      label: isOwnTeam ? tTargets('friendly.label') : tTargets('enemy.label'),
+      isOwnTeam,
+      label: tTeams(isOwnTeam ? 'friendly' : 'enemy'),
       members,
       selectedCount: members.filter((p) => isPlayerSelected(p.puuid)).length
     })
