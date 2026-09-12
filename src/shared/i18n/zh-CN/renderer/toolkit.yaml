@@ -493,6 +493,7 @@ toolkit:
         rowReady: 已生成 {{count}} 条评价
         reasons:
           noOngoingGame: 当前没有进行中的对局
+          noSelectedPlayers: 未勾选任何玩家
           sgpUnavailable: SGP 数据源不可用或 token 未就绪
           noActiveModel: 未配置或未激活 AI 模型
           running: 正在获取与评价中

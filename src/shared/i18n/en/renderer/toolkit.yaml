@@ -493,6 +493,7 @@ toolkit:
         rowReady: '{{count}} replies generated'
         reasons:
           noOngoingGame: No ongoing game right now
+          noSelectedPlayers: No players selected
           sgpUnavailable: SGP data source unavailable or token not ready
           noActiveModel: No AI model configured or activated
           running: Fetching and evaluating

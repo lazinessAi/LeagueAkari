@@ -8,6 +8,7 @@ import {
   type InGameSendJunglePresetOptions,
   type InGameSendPremadePresetOptionPatch,
   type InGameSendPremadePresetOptions,
+  type InGameSendPresetNameDisplayStrategy,
   type InGameSendPresetTarget,
   type InGameSendRatingPresetOptionPatch,
   type InGameSendRatingPresetOptions,
@@ -227,6 +228,10 @@ export class InGameSendRenderer implements IAkariShardInitDispose {
   }
 
   /** 更新 AI 评价某个目标的发送快捷键（整体替换该设置） */
+  setAiEvaluationNameDisplayStrategy(strategy: InGameSendPresetNameDisplayStrategy) {
+    return this._settingUtils.set(MAIN_SHARD_NAMESPACE, 'aiEvaluationNameDisplayStrategy', strategy)
+  }
+
   setAiEvaluationTargetShortcut(target: InGameSendPresetTarget, shortcutId: string | null) {
     const { aiEvaluationTargetShortcuts } = useInGameSendStore().settings
 

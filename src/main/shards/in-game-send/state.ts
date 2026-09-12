@@ -4,6 +4,7 @@ import {
   type InGameSendFixedTextPresetItem,
   type InGameSendJunglePresetOptions,
   type InGameSendPremadePresetOptions,
+  type InGameSendPresetNameDisplayStrategy,
   type InGameSendPresetTargetShortcuts,
   type InGameSendRatingPresetOptions,
   createDefaultInGameSendCustomTemplateItems,
@@ -25,6 +26,7 @@ export class InGameSendSettings {
   fixedTextPresetItems: InGameSendFixedTextPresetItem[] =
     createDefaultInGameSendFixedTextPresetItems()
   customTemplateRiskNoticeShown = false
+  aiEvaluationNameDisplayStrategy: InGameSendPresetNameDisplayStrategy = 'preferChampionName'
   aiEvaluationTargetShortcuts: InGameSendPresetTargetShortcuts =
     createDefaultInGameSendPresetTargetShortcuts()
   customTemplateItems: InGameSendCustomTemplateItem[] = createDefaultInGameSendCustomTemplateItems()

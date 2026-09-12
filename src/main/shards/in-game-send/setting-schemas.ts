@@ -3,6 +3,7 @@ import type {
   InGameSendFixedTextPresetItem,
   InGameSendJunglePresetOptions,
   InGameSendPremadePresetOptions,
+  InGameSendPresetNameDisplayStrategy,
   InGameSendPresetTargetShortcuts,
   InGameSendRatingPresetOptions
 } from '@shared/shards/in-game-send'
@@ -16,11 +17,8 @@ export const inGameSendTargetShortcutsSchema: z.ZodType<InGameSendPresetTargetSh
   }
 )
 
-const presetNameDisplayStrategySchema = z.enum([
-  'preferName',
-  'preferChampionName',
-  'championNameWithName'
-])
+export const inGameSendNameDisplayStrategySchema: z.ZodType<InGameSendPresetNameDisplayStrategy> =
+  z.enum(['preferName', 'preferChampionName', 'championNameWithName'])
 
 export const inGameSendRatingPresetOptionsSchema: z.ZodType<InGameSendRatingPresetOptions> =
   z.object({
@@ -37,7 +35,7 @@ export const inGameSendRatingPresetOptionsSchema: z.ZodType<InGameSendRatingPres
     avgDamageGoldEfficiency: z.boolean(),
     mainChampions: z.boolean(),
     mainPositions: z.boolean(),
-    nameDisplayStrategy: presetNameDisplayStrategySchema,
+    nameDisplayStrategy: inGameSendNameDisplayStrategySchema,
     showCurrentChampion: z.boolean()
   })
 
@@ -50,14 +48,14 @@ export const inGameSendJunglePresetOptionsSchema: z.ZodType<InGameSendJunglePres
     dragonControl: z.boolean(),
     monsterControl: z.boolean(),
     mainChampions: z.boolean(),
-    nameDisplayStrategy: presetNameDisplayStrategySchema,
+    nameDisplayStrategy: inGameSendNameDisplayStrategySchema,
     showCurrentChampion: z.boolean()
   })
 
 export const inGameSendPremadePresetOptionsSchema: z.ZodType<InGameSendPremadePresetOptions> =
   z.object({
     targetShortcuts: inGameSendTargetShortcutsSchema,
-    nameDisplayStrategy: presetNameDisplayStrategySchema
+    nameDisplayStrategy: inGameSendNameDisplayStrategySchema
   })
 
 export const inGameSendFixedTextPresetItemsSchema: z.ZodType<InGameSendFixedTextPresetItem[]> =

@@ -32,6 +32,7 @@ import {
   inGameSendCustomTemplateItemsSchema,
   inGameSendFixedTextPresetItemsSchema,
   inGameSendJunglePresetOptionsSchema,
+  inGameSendNameDisplayStrategySchema,
   inGameSendPremadePresetOptionsSchema,
   inGameSendRatingPresetOptionsSchema,
   inGameSendTargetShortcutsSchema
@@ -120,6 +121,10 @@ export class InGameSendMain implements IAkariShardInitDispose {
         aiEvaluationTargetShortcuts: {
           default: this.settings.aiEvaluationTargetShortcuts,
           schema: inGameSendTargetShortcutsSchema
+        },
+        aiEvaluationNameDisplayStrategy: {
+          default: this.settings.aiEvaluationNameDisplayStrategy,
+          schema: inGameSendNameDisplayStrategySchema
         }
       },
       this.settings
@@ -175,6 +180,7 @@ export class InGameSendMain implements IAkariShardInitDispose {
       'fixedTextPresetItems',
       'customTemplateRiskNoticeShown',
       'aiEvaluationTargetShortcuts',
+      'aiEvaluationNameDisplayStrategy',
       'customTemplateItems'
     ])
 

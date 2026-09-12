@@ -1,5 +1,6 @@
 import {
   type InGameSendCustomTemplateLastError,
+  type InGameSendPresetNameDisplayStrategy,
   createDefaultInGameSendCustomTemplateItems,
   createDefaultInGameSendFixedTextPresetItems,
   createDefaultInGameSendJunglePresetOptions,
@@ -20,7 +21,8 @@ export const useInGameSendStore = defineStore('shard:in-game-send-renderer', () 
     fixedTextPresetItems: createDefaultInGameSendFixedTextPresetItems(),
     customTemplateRiskNoticeShown: false,
     customTemplateItems: createDefaultInGameSendCustomTemplateItems(),
-    aiEvaluationTargetShortcuts: createDefaultInGameSendPresetTargetShortcuts()
+    aiEvaluationTargetShortcuts: createDefaultInGameSendPresetTargetShortcuts(),
+    aiEvaluationNameDisplayStrategy: 'preferChampionName' as InGameSendPresetNameDisplayStrategy
   })
 
   /**

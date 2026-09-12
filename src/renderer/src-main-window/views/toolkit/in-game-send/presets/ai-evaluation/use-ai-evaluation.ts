@@ -5,13 +5,15 @@ import { useAiModelStore } from '@renderer-shared/shards/ai-model/store'
 import { useExtraAssetsStore } from '@renderer-shared/shards/extra-assets/store'
 import { InGameSendRenderer } from '@renderer-shared/shards/in-game-send'
 import { IN_GAME_SEND_MAIN_NAMESPACE } from '@renderer-shared/shards/in-game-send/context'
+import { useInGameSendStore } from '@renderer-shared/shards/in-game-send/store'
 import { AkariIpcRenderer } from '@renderer-shared/shards/ipc'
 import { useLeagueClientStore } from '@renderer-shared/shards/league-client/store'
 import { useOngoingGameStore } from '@renderer-shared/shards/ongoing-game/store'
 import { SgpRenderer } from '@renderer-shared/shards/sgp'
 import { useSgpStore } from '@renderer-shared/shards/sgp/store'
+import type { InGameSendPresetNameDisplayStrategy } from '@shared/shards/in-game-send'
 import { useTranslation } from 'i18next-vue'
-import { computed, reactive } from 'vue'
+import { computed, reactive, watch } from 'vue'
 
 import { buildAramMayhemReport } from './aggregate'
 import {
@@ -32,6 +34,7 @@ export type AiEvaluationPlayerStatus =
 export interface AiEvaluationPlayerEntry {
   puuid: string
   name: string
+  displayName: string
   status: AiEvaluationPlayerStatus
   reply: string
   errorMessage: string
@@ -83,7 +86,7 @@ function buildEvaluationChatLines(evaluations: AiEvaluationPlayerEntry[]): strin
       .split(/\n+/)
       .map((s) => s.trim())
       .filter(Boolean)) {
-      const prefixed = `${evaluation.name}：${paragraph}`
+      const prefixed = `${evaluation.displayName || evaluation.name}：${paragraph}`
       lines.push(...splitLongLine(prefixed, AI_EVALUATION_CHAT_LINE_MAX_LENGTH))
     }
   }
@@ -136,6 +139,7 @@ export function useAiEvaluation() {
   const sgp = useInstance(SgpRenderer)
   const aiModel = useInstance(AiModelRenderer)
   const igs = useInstance(InGameSendRenderer)
+  const igsStore = useInGameSendStore()
   const ipc = useInstance(AkariIpcRenderer)
   const { searchSummonerByAlias } = useSummonerFetch()
 
@@ -144,6 +148,9 @@ export function useAiEvaluation() {
     enemy: { status: 'idle', evaluations: [] },
     all: { status: 'idle', evaluations: [] }
   })
+
+  // 对局玩家勾选状态（puuid -> 是否参与评价/发送，默认全选）
+  const selection = reactive<Record<string, boolean>>({})
 
   const manual = reactive({
     input: '',
@@ -196,6 +203,10 @@ export function useAiEvaluation() {
       return t('reasons.noOngoingGame')
     }
 
+    if (getTargetPlayers(target).length === 0) {
+      return t('reasons.noSelectedPlayers')
+    }
+
     if (rows[target].status === 'running') {
       return t('reasons.running')
     }
@@ -229,7 +240,9 @@ export function useAiEvaluation() {
     return summoner?.displayName || puuid.slice(0, 8)
   }
 
-  function getTargetPlayers(target: AiEvaluationTargetId): { puuid: string; name: string }[] {
+  function getTargetPlayers(
+    target: AiEvaluationTargetId
+  ): { puuid: string; name: string; displayName: string }[] {
     const ownPuuid = lcStore.summoner.me?.puuid
     const bucketEntries = Object.entries(ogs.teams).filter(([, members]) => members.length > 0)
 
@@ -264,8 +277,128 @@ export function useAiEvaluation() {
           return true
         })
     }
+    const resolved = puuids
+      .filter(Boolean)
+      .filter((puuid) => selection[puuid] !== false)
+      .map((puuid) => {
+        const view = allGamePlayers.value.find((p) => p.puuid === puuid)
+        return {
+          puuid,
+          name: formatPlayerName(puuid),
+          championId: view?.championId ?? null
+        }
+      })
 
-    return puuids.filter(Boolean).map((puuid) => ({ puuid, name: formatPlayerName(puuid) }))
+    // 名字展示策略：存在重复英雄时 preferChampionName 回退为玩家名
+    const strategy = igsStore.settings.aiEvaluationNameDisplayStrategy
+    const championCounts = new Map<number, number>()
+    if (strategy !== 'preferName') {
+      for (const player of resolved) {
+        if (player.championId) {
+          championCounts.set(player.championId, (championCounts.get(player.championId) ?? 0) + 1)
+        }
+      }
+    }
+
+    return resolved.map((player) => ({
+      puuid: player.puuid,
+      name: player.name,
+      displayName: computeDisplayName(player.name, player.championId, strategy, championCounts)
+    }))
+  }
+
+  function computeDisplayName(
+    playerName: string,
+    championId: number | null,
+    strategy: InGameSendPresetNameDisplayStrategy,
+    duplicateChampionIds: Map<number, number>
+  ): string {
+    const championName = championId ? lcStore.gameData.champions[championId]?.name : undefined
+
+    if (championId && championName && (duplicateChampionIds.get(championId) ?? 0) <= 1) {
+      if (strategy === 'championNameWithName') {
+        return `${championName}（${playerName}）`
+      }
+
+      if (strategy === 'preferChampionName') {
+        return championName
+      }
+    }
+
+    return playerName
+  }
+
+  /** 对局内全部玩家的展示视图（勾选面板用） */
+  const allGamePlayers = computed(() => {
+    const ownPuuid = lcStore.summoner.me?.puuid
+    const ownBucket = Object.entries(ogs.teams).find(
+      ([, members]) => ownPuuid && members.includes(ownPuuid)
+    )
+    const ownSet = new Set(ownBucket?.[1] ?? [])
+
+    const seen = new Set<string>()
+    const players: {
+      puuid: string
+      name: string
+      gameName: string
+      tagLine: string
+      isOwnTeam: boolean
+      championId: number | null
+      profileIconId: number | null
+    }[] = []
+
+    for (const members of Object.values(ogs.teams)) {
+      for (const puuid of members) {
+        if (!puuid || seen.has(puuid)) {
+          continue
+        }
+
+        seen.add(puuid)
+        const summoner = ogs.summoner[puuid]
+        players.push({
+          puuid,
+          name: formatPlayerName(puuid),
+          gameName: summoner?.gameName || '',
+          tagLine: summoner?.tagLine || '',
+          isOwnTeam: ownSet.has(puuid),
+          championId: ogs.championSelections[puuid] ?? null,
+          profileIconId: summoner?.profileIconId ?? null
+        })
+      }
+    }
+
+    return players
+  })
+
+  // 新出现的玩家默认勾选
+  watch(
+    allGamePlayers,
+    (players) => {
+      for (const player of players) {
+        if (!(player.puuid in selection)) {
+          selection[player.puuid] = true
+        }
+      }
+    },
+    { immediate: true }
+  )
+
+  const selectedGamePlayerCount = computed(
+    () => allGamePlayers.value.filter((p) => selection[p.puuid] !== false).length
+  )
+
+  function isPlayerSelected(puuid: string) {
+    return selection[puuid] !== false
+  }
+
+  function setPlayerSelected(puuid: string, checked: boolean) {
+    selection[puuid] = checked
+  }
+
+  function setAllPlayersSelected(checked: boolean) {
+    for (const player of allGamePlayers.value) {
+      selection[player.puuid] = checked
+    }
   }
 
   async function evaluatePlayer(entry: AiEvaluationPlayerEntry) {
@@ -339,7 +472,9 @@ export function useAiEvaluation() {
     }
 
     row.evaluations = players.map((player) => ({
-      ...player,
+      puuid: player.puuid,
+      name: player.name,
+      displayName: player.displayName,
       status: 'pending',
       reply: '',
       errorMessage: ''
@@ -386,6 +521,7 @@ export function useAiEvaluation() {
     manual.entry = {
       puuid: '',
       name: `${parsed.gameName}#${parsed.tagLine}`,
+      displayName: `${parsed.gameName}#${parsed.tagLine}`,
       status: 'fetching',
       reply: '',
       errorMessage: ''
@@ -414,6 +550,7 @@ export function useAiEvaluation() {
     }
 
     manual.entry.puuid = summoner.puuid
+    manual.entry.displayName = manual.entry.name
     manual.entry.name = summoner.gameName
       ? summoner.tagLine
         ? `${summoner.gameName}#${summoner.tagLine}`
@@ -450,6 +587,12 @@ export function useAiEvaluation() {
   return {
     rows,
     manual,
+    selection,
+    allGamePlayers,
+    selectedGamePlayerCount,
+    isPlayerSelected,
+    setPlayerSelected,
+    setAllPlayersSelected,
     sgpReady,
     commonDisabledReason,
     activeModelConfig,

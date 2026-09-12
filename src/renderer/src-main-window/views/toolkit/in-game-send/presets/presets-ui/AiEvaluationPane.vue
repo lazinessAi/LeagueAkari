@@ -68,6 +68,103 @@
     <!-- Keep the final row divider when content follows this group. -->
     <span hidden aria-hidden="true"></span>
 
+    <NameDisplayStrategySelector
+      :value="igsStore.settings.aiEvaluationNameDisplayStrategy"
+      @update:value="(strategy) => igs.setAiEvaluationNameDisplayStrategy(strategy)"
+    />
+
+    <!-- 发送的目标：按玩家勾选 -->
+    <div v-if="allGamePlayers.length" class="mt-1 flex flex-col gap-2">
+      <div class="flex items-center justify-between">
+        <div class="text-xs font-semibold text-black/70 dark:text-white/70">
+          {{
+            tSelection('playersTitle', {
+              selected: selectedGamePlayerCount,
+              total: allGamePlayers.length
+            })
+          }}
+        </div>
+        <div class="flex items-center gap-1">
+          <NButton size="tiny" quaternary :focusable="false" @click="setAllPlayersSelected(true)">
+            {{ tSelection('selectAll') }}
+          </NButton>
+          <NButton size="tiny" quaternary :focusable="false" @click="setAllPlayersSelected(false)">
+            {{ tSelection('clear') }}
+          </NButton>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div
+          v-for="group of playerGroups"
+          :key="group.label"
+          class="rounded border border-black/10 bg-black/3 p-2 dark:border-white/10 dark:bg-white/3"
+        >
+          <div class="mb-1.5 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-1.5 text-xs font-semibold">
+              <span>{{ group.label }}</span>
+              <span class="font-normal text-black/45 dark:text-white/45">
+                ({{ group.selectedCount }}/{{ group.members.length }})
+              </span>
+            </div>
+            <NCheckbox
+              size="small"
+              :checked="group.selectedCount === group.members.length"
+              :indeterminate="group.selectedCount > 0 && group.selectedCount < group.members.length"
+              @update:checked="(checked) => setGroupSelected(group, checked)"
+            >
+              <span class="text-[11px] text-black/55 dark:text-white/55">
+                {{ tSelection('selectAll') }}
+              </span>
+            </NCheckbox>
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <div
+              v-for="player of group.members"
+              :key="player.puuid"
+              class="flex cursor-pointer items-center gap-2"
+              @click="setPlayerSelected(player.puuid, !isPlayerSelected(player.puuid))"
+            >
+              <NCheckbox
+                size="small"
+                :checked="isPlayerSelected(player.puuid)"
+                @update:checked="(checked) => setPlayerSelected(player.puuid, checked)"
+                @click.stop
+              />
+              <ChampionIcon
+                v-if="player.championId"
+                class="size-5 shrink-0"
+                round
+                :champion-id="player.championId"
+              />
+              <LcuImage
+                v-else-if="player.profileIconId !== null"
+                class="size-5 shrink-0 rounded-full"
+                :src="profileIconUri(player.profileIconId)"
+              />
+              <div class="flex min-w-0 flex-1 items-baseline gap-0.5 text-[12px] leading-none">
+                <template v-if="!as.settings.streamerMode">
+                  <span class="truncate font-medium text-black/85 dark:text-white/85">
+                    {{ player.gameName || player.name }}
+                  </span>
+                  <span
+                    v-if="player.tagLine"
+                    class="shrink-0 text-[11px] text-black/50 dark:text-white/50"
+                  >
+                    #{{ player.tagLine }}
+                  </span>
+                </template>
+                <span v-else class="truncate font-medium text-black/85 dark:text-white/85">
+                  {{ maskedName(player.name) }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 评价结果 -->
     <div class="mt-3 flex flex-col gap-2">
       <template v-for="target of targets" :key="target.id">
@@ -84,7 +181,9 @@
             :key="evaluation.puuid"
             class="rounded border border-black/10 bg-black/5 px-3 py-2 text-xs leading-relaxed dark:border-white/10 dark:bg-white/5"
           >
-            <span class="font-bold">{{ maskedName(evaluation.name) }}</span>
+            <span class="font-bold">{{
+              maskedName(evaluation.displayName || evaluation.name)
+            }}</span>
             <span v-if="evaluation.status === 'done'" class="ml-2">{{ evaluation.reply }}</span>
             <span v-else class="ml-2 text-black/50 dark:text-white/50">
               {{ playerStatusText(evaluation) }}
@@ -140,7 +239,7 @@
       v-if="manual.entry"
       class="mt-2 rounded border border-black/10 bg-black/5 px-3 py-2 text-xs leading-relaxed dark:border-white/10 dark:bg-white/5"
     >
-      <span class="font-bold">{{ maskedName(manual.entry.name) }}</span>
+      <span class="font-bold">{{ maskedName(manual.entry.displayName || manual.entry.name) }}</span>
       <div v-if="manual.entry.status === 'done'" class="mt-1">{{ manual.entry.reply }}</div>
       <div v-else class="mt-1 text-black/50 dark:text-white/50">
         {{ playerStatusText(manual.entry) }}
@@ -170,13 +269,18 @@
 </template>
 
 <script setup lang="ts">
+import ChampionIcon from '@renderer-shared/components/widgets/ChampionIcon.vue'
+import LcuImage from '@renderer-shared/components/LcuImage.vue'
 import SettingsRow from '@renderer-shared/components/SettingsRow.vue'
+import { profileIconUri } from '@renderer-shared/shards/league-client/game-data-assets'
 import { InGameSendRenderer } from '@renderer-shared/shards/in-game-send'
 import { useInGameSendStore } from '@renderer-shared/shards/in-game-send/store'
 import { useInstance } from '@renderer-shared/shards'
+import { useAppCommonStore } from '@renderer-shared/shards/app-common/store'
 import { useStreamerModeMaskedText } from '@renderer-shared/composables/useStreamerModeMaskedText'
 import { getInGameSendAiEvaluationShortcutTargetId } from '@shared/shards/in-game-send'
 import ShortcutSelector from '@main-window/components/ShortcutSelector.vue'
+import NameDisplayStrategySelector from '../widgets/NameDisplayStrategySelector.vue'
 import { DocumentText24Regular as DryRunIcon, Send24Filled as SendIcon } from '@vicons/fluent'
 import { useTranslation } from 'i18next-vue'
 import {
@@ -191,7 +295,7 @@ import {
   NRadioGroup,
   useMessage
 } from 'naive-ui'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import { AI_EVALUATION_SYSTEM_PROMPT } from '../ai-evaluation/prompt'
 import {
@@ -202,14 +306,26 @@ import {
 import { usePresetTargets } from '../widgets/usePresetTargets'
 
 const { t } = useTranslation('renderer', { keyPrefix: 'toolkit.inGameSend.presets.aiEvaluation' })
+const { t: tSelection } = useTranslation('renderer', {
+  keyPrefix: 'toolkit.inGameSend.presets.selection'
+})
+const { t: tTargets } = useTranslation('renderer', {
+  keyPrefix: 'toolkit.inGameSend.presets.targets'
+})
 
 const message = useMessage()
+const as = useAppCommonStore()
 const { masked } = useStreamerModeMaskedText()
 
 const {
   rows,
   manual,
   manualRunning,
+  allGamePlayers,
+  selectedGamePlayerCount,
+  isPlayerSelected,
+  setPlayerSelected,
+  setAllPlayersSelected,
   commonDisabledReason,
   getTargetDisabledReason,
   getTargetSendDisabledReason,
@@ -240,6 +356,40 @@ function targetDryRunDisabledReason(target: AiEvaluationTargetId) {
 function targetDescription(target: { id: AiEvaluationTargetId; description: string }) {
   const count = getTargetPlayers(target.id).length
   return `${target.description} · ${t('teamsCount', { count })}`
+}
+
+const playerGroups = computed(() => {
+  const groups: {
+    label: string
+    members: {
+      puuid: string
+      name: string
+      gameName: string
+      tagLine: string
+      championId: number | null
+      profileIconId: number | null
+    }[]
+    selectedCount: number
+  }[] = []
+
+  for (const isOwnTeam of [true, false]) {
+    const members = allGamePlayers.value.filter((p) => p.isOwnTeam === isOwnTeam)
+    if (!members.length) continue
+
+    groups.push({
+      label: isOwnTeam ? tTargets('friendly.label') : tTargets('enemy.label'),
+      members,
+      selectedCount: members.filter((p) => isPlayerSelected(p.puuid)).length
+    })
+  }
+
+  return groups
+})
+
+function setGroupSelected(group: { members: { puuid: string }[] }, checked: boolean) {
+  for (const member of group.members) {
+    setPlayerSelected(member.puuid, checked)
+  }
 }
 
 function doneCount(target: AiEvaluationTargetId) {
