@@ -1,0 +1,55 @@
+aiModel:
+  title: AI 模型
+  description: 管理供 AI 功能使用的模型接入配置
+  createConfig: 新建配置
+  empty:
+    description: 尚未配置任何模型，创建一个以供 AI 功能使用
+    create: 新建配置
+  protocol:
+    openai: OpenAI 兼容
+    anthropic: Anthropic
+  config:
+    active: 使用中
+    setActive: 设为使用中
+    test: 测试
+    edit: 编辑
+    delete: 删除
+    deleteConfirm: 确定删除该模型配置吗？
+    testResult:
+      success: 测试成功（{{durationMs}} ms）
+      reply: 回复：{{reply}}
+      failureReason: 测试失败：{{reason}}
+      reason:
+        invalid-config: 配置不完整
+        network: 网络错误，无法连接到 API 地址（若开启了代理，请检查代理节点是否可用）
+        auth: 鉴权失败，请检查 API Key
+        not-found: 接口或模型不存在（404）
+        unknown: 未知错误
+  fetchModels:
+    button: 获取列表
+    succeeded_one: 已获取 {{count}} 个模型
+    succeeded_other: 已获取 {{count}} 个模型
+    failedReason: 获取模型列表失败：{{reason}}
+  form:
+    createTitle: 新建模型配置
+    editTitle: 编辑模型配置
+    name: 名称
+    namePlaceholder: 例如：OpenAI 官方
+    protocol: 协议类型
+    baseUrl: API 地址
+    baseUrlPlaceholder:
+      openai: 例如：https://api.openai.com/v1
+      anthropic: 例如：https://api.anthropic.com/v1
+    baseUrlHint: 填写到版本段，例如 https://api.openai.com/v1
+    apiKey: API Key
+    apiKeyPlaceholder: 留空表示不使用鉴权
+    modelId: 具体模型
+    modelIdPlaceholder: 输入或从列表中选择模型 ID
+    note: 备注
+    notePlaceholder: 可选
+    save: 保存
+    cancel: 取消
+    validation:
+      nameRequired: 请输入名称
+      baseUrlRequired: 请输入 API 地址
+      modelIdRequired: 请输入或选择模型 ID

@@ -106,21 +106,22 @@ export function createPreviousGameLoader(context: PreviousGameLoaderContext) {
   const fetchMatchHistory = async (
     puuid: string,
     source: DataSource,
-    count: number
+    count: number,
+    tagParams: { tag?: string; tagsQueryType?: 'AND' | 'OR' } = {}
   ): Promise<PreviousGameMatchHistoryEntry> => {
     const params = { startIndex: 0, count }
 
     if (source.type === 'sgp') {
       const { data } = await context.sgp.api.matchHistoryQuery.getMatchHistorySummaryByPlayerPuuid(
         puuid,
-        { ...params, __sgpServerId: source.sgpServerId }
+        { ...params, ...tagParams, __sgpServerId: source.sgpServerId }
       )
 
       const games: LcuOrSgpGameSummary[] = data.games
         .filter((g) => g.json) // 有时候服务器内容错误，没有这个 json 字段，原因不明
         .map((g) => ({ source: 'sgp', data: g, gameId: g.json.gameId }))
 
-      return { source: 'sgp', params, data: games }
+      return { source: 'sgp', params: { ...params, ...tagParams }, data: games }
     }
 
     const { data } = await context.leagueClient.api.matchHistory.getMatchHistory(
@@ -186,13 +187,14 @@ export function createPreviousGameLoader(context: PreviousGameLoaderContext) {
     selfMatchHistory: PreviousGameMatchHistoryEntry,
     source: DataSource,
     matchHistoryCount: number,
+    tagParams: { tag?: string; tagsQueryType?: 'AND' | 'OR' },
     data: PreviousGameCollectedData
   ) => {
     const [matchHistory, summoner, rankedStats, championMastery, savedInfo] =
       await Promise.allSettled([
         puuid === selfPuuid
           ? Promise.resolve(selfMatchHistory)
-          : fetchMatchHistory(puuid, source, matchHistoryCount),
+          : fetchMatchHistory(puuid, source, matchHistoryCount, tagParams),
         context.leagueClient.api.summoner.getSummonerByPuuid(puuid),
         context.leagueClient.api.ranked.getRankedStats(puuid),
         loadChampionMastery(puuid),
@@ -391,12 +393,13 @@ export function createPreviousGameLoader(context: PreviousGameLoaderContext) {
       const source = resolveDataSource()
       const matchHistoryCount = context.ongoingGameStore.settings.matchHistoryLoadCount
 
-      const selfMatchHistory = await fetchMatchHistory(me.puuid, source, matchHistoryCount)
+      // 发现“最近一局”时不带过滤条件，否则会被当前过滤 tag 掩盖
+      const discoveredHistory = await fetchMatchHistory(me.puuid, source, matchHistoryCount)
       if (currentGeneration !== generation) {
         return { ok: true }
       }
 
-      const latestGame = selfMatchHistory.data[0]
+      const latestGame = discoveredHistory.data[0]
       if (!latestGame) {
         store.snapshot = null
         store.loadedGameId = null
@@ -407,6 +410,24 @@ export function createPreviousGameLoader(context: PreviousGameLoaderContext) {
       if (!core) {
         store.loadError = 'invalid-game-data'
         return { ok: false }
+      }
+
+      // 加载到新的一局时，默认按这一局的队列类型过滤战绩（仅 SGP 数据源支持）；
+      // 同一局内重新加载（如手动切换过滤条件）则保持当前选择
+      if (store.loadedGameId !== latestGame.gameId) {
+        store.matchHistoryTagParams =
+          source.type === 'sgp' ? { tag: `q_${core.basicInfo.queueId}`, tagsQueryType: 'AND' } : {}
+      }
+
+      const tagParams = source.type === 'sgp' ? store.matchHistoryTagParams : {}
+
+      // 面板中自己的战绩列表也要与其他玩家一致地按过滤条件展示
+      let selfMatchHistory = discoveredHistory
+      if (source.type === 'sgp' && tagParams.tag) {
+        selfMatchHistory = await fetchMatchHistory(me.puuid, source, matchHistoryCount, tagParams)
+        if (currentGeneration !== generation) {
+          return { ok: true }
+        }
       }
 
       const puuids = [...new Set(Object.values(core.teams).flat())]
@@ -422,7 +443,15 @@ export function createPreviousGameLoader(context: PreviousGameLoaderContext) {
       await Promise.all(
         puuids.map((puuid) =>
           playerTaskQueue.add(() =>
-            loadPlayerData(puuid, me.puuid, selfMatchHistory, source, matchHistoryCount, data)
+            loadPlayerData(
+              puuid,
+              me.puuid,
+              selfMatchHistory,
+              source,
+              matchHistoryCount,
+              tagParams,
+              data
+            )
           )
         )
       )
@@ -440,6 +469,7 @@ export function createPreviousGameLoader(context: PreviousGameLoaderContext) {
       store.snapshot = buildPreviousGameSnapshot({
         selfPuuid: me.puuid,
         core,
+        matchHistoryTagParams: tagParams,
         matchHistory: data.matchHistory,
         matchHistoryLoadingState: data.matchHistoryLoadingState,
         summoner: data.summoner,

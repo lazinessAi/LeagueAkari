@@ -187,6 +187,7 @@ navigation:
       ongoing-game: 对局
       automation: 自动操作
       toolkit: 工具集
+      ai-models: AI 模型
       test: 测试
     status:
       respawned: 已复活

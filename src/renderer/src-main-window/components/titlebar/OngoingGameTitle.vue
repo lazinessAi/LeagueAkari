@@ -32,6 +32,20 @@
           />
         </div>
 
+        <div
+          v-if="isPreviousTagSelectVisible"
+          class="queue-tag-select"
+          :class="{ 'is-compact': compact }"
+        >
+          <NSelect
+            size="tiny"
+            :value="selectedPreviousSgpTagValue"
+            :consistent-menu-width="false"
+            @update:value="handlePreviousSgpTagChange"
+            :options="sgpTagOptions"
+          />
+        </div>
+
         <NTooltip v-if="titleModel.showExitDraft" :z-index="TITLEBAR_TOOLTIP_Z_INDEX">
           <template #trigger>
             <NButton
@@ -268,6 +282,33 @@ const handleOpenOngoingGameSettings = () => {
 }
 
 const handleRefreshPreviousGame = async () => {
+  const result = await previousGame.refresh()
+
+  if (!result.ok && previousGameStore.snapshot) {
+    message.error(t('ongoingGame.tabs.loadFailed'))
+  }
+}
+
+// 上一局战绩的类型过滤，与当前对局的队列 tag 过滤使用同一套机制（仅 SGP 数据源支持）
+const isPreviousTagSelectVisible = computed(() => {
+  return (
+    previousGameStore.activeTab === 'previous' &&
+    appCommon.settings.preferredLolSource === 'sgp' &&
+    sgp.availability.serversSupported.matchHistory
+  )
+})
+
+const selectedPreviousSgpTagValue = computed(
+  () => previousGameStore.matchHistoryTagParams?.tag || ALL_SGPTAG_VALUE
+)
+
+const handlePreviousSgpTagChange = async (val: string) => {
+  if (!val || val === ALL_SGPTAG_VALUE) {
+    previousGameStore.matchHistoryTagParams = {}
+  } else {
+    previousGameStore.matchHistoryTagParams = { tag: val, tagsQueryType: 'AND' }
+  }
+
   const result = await previousGame.refresh()
 
   if (!result.ok && previousGameStore.snapshot) {

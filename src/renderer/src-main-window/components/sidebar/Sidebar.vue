@@ -57,6 +57,7 @@ import { WindowManagerRenderer } from '@renderer-shared/shards/window-manager'
 import { ToolFilled as ToolFilledIcon } from '@vicons/antd'
 import {
   AnimalRabbit28Filled as AnimalRabbit28FilledIcon,
+  BrainCircuit24Filled as BrainCircuit24FilledIcon,
   Flash20Filled as Flash20FilledIcon,
   Games24Filled as Games24FilledIcon
 } from '@vicons/fluent'
@@ -192,6 +193,11 @@ const menu = computed(() => {
       key: 'toolkit',
       icon: renderIcon(ToolFilledIcon),
       name: t('navigation.sidebar.menu.toolkit')
+    },
+    {
+      key: 'ai-models',
+      icon: renderIcon(BrainCircuit24FilledIcon),
+      name: t('navigation.sidebar.menu.ai-models')
     },
     {
       key: 'test',

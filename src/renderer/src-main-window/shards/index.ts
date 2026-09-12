@@ -1,4 +1,5 @@
 import { createManager } from '@renderer-shared/shards'
+import { AiModelRenderer } from '@renderer-shared/shards/ai-model'
 import { AkariApiRenderer } from '@renderer-shared/shards/akari-api'
 import { AkariNavigationRenderer } from '@renderer-shared/shards/akari-navigation'
 import { AkariProtocolRenderer } from '@renderer-shared/shards/akari-protocol'
@@ -45,6 +46,7 @@ manager.use(AkariIpcRenderer)
 manager.use(AkariApiRenderer)
 manager.use(AkariProtocolRenderer)
 manager.use(AppCommonRenderer)
+manager.use(AiModelRenderer)
 manager.use(AutoChampConfigRenderer)
 manager.use(AutoGameflowRenderer)
 manager.use(AutoSelectRenderer)

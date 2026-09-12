@@ -188,6 +188,7 @@ navigation:
       ongoing-game: Ongoing Game
       automation: Automation
       toolkit: Toolkit
+      ai-models: AI Models
       test: Test
     status:
       respawned: Respawned

@@ -20,12 +20,20 @@ export const usePreviousGameStore = defineStore('shard:previous-game-renderer', 
   /** 当前快照对应的对局 id，用于局结束后判断战绩是否已入库 */
   const loadedGameId = ref<number | null>(null)
 
+  /**
+   * 上一局战绩的过滤 tag（仅 SGP 数据源生效）。
+   * 每次加载到新的一局时会自动重置为该局的队列类型（q_<queueId>），
+   * 手动切换过滤条件后在同一局内保持所选值。
+   */
+  const matchHistoryTagParams = ref<{ tag?: string; tagsQueryType?: 'AND' | 'OR' }>({})
+
   return {
     activeTab,
     snapshot,
     isLoading,
     isTimelineLoading,
     loadError,
-    loadedGameId
+    loadedGameId,
+    matchHistoryTagParams
   }
 })

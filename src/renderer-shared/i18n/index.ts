@@ -1,4 +1,5 @@
 import commonEn from '@shared/i18n/en/common.yaml'
+import aiModelEn from '@shared/i18n/en/renderer/ai-model.yaml'
 import automationEn from '@shared/i18n/en/renderer/automation.yaml'
 import auxWindowEn from '@shared/i18n/en/renderer/aux-window.yaml'
 import cdTimerEn from '@shared/i18n/en/renderer/cd-timer.yaml'
@@ -14,6 +15,7 @@ import settingsEn from '@shared/i18n/en/renderer/settings.yaml'
 import shellEn from '@shared/i18n/en/renderer/shell.yaml'
 import toolkitEn from '@shared/i18n/en/renderer/toolkit.yaml'
 import commonZhCN from '@shared/i18n/zh-CN/common.yaml'
+import aiModelZhCN from '@shared/i18n/zh-CN/renderer/ai-model.yaml'
 import automationZhCN from '@shared/i18n/zh-CN/renderer/automation.yaml'
 import auxWindowZhCN from '@shared/i18n/zh-CN/renderer/aux-window.yaml'
 import cdTimerZhCN from '@shared/i18n/zh-CN/renderer/cd-timer.yaml'
@@ -49,6 +51,7 @@ function mergeRendererResources(...resources: Record<string, unknown>[]) {
 const rendererEn = mergeRendererResources(
   shellEn,
   settingsEn,
+  aiModelEn,
   automationEn,
   leagueClientEn,
   rankedEn,
@@ -66,6 +69,7 @@ const rendererEn = mergeRendererResources(
 const rendererZhCN = mergeRendererResources(
   shellZhCN,
   settingsZhCN,
+  aiModelZhCN,
   automationZhCN,
   leagueClientZhCN,
   rankedZhCN,

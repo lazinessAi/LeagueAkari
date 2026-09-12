@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 
+import AiModels from '@main-window/views/ai-models/AiModels.vue'
 import Automation from '@main-window/views/automation/Automation.vue'
 import OngoingGame from '@main-window/views/ongoing-game/OngoingGame.vue'
 import PlayerTabs from '@main-window/views/player-tabs/PlayerTabs.vue'
@@ -29,6 +30,11 @@ const router = createRouter({
       name: 'toolkit',
       path: '/toolkit/:section?',
       component: Toolkit
+    },
+    {
+      name: 'ai-models',
+      path: '/ai-models',
+      component: AiModels
     },
     {
       name: 'automation',

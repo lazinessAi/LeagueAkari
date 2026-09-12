@@ -1,0 +1,52 @@
+aiModel:
+  title: AI Models
+  description: Manage model configurations used by AI-powered features
+  createConfig: New Configuration
+  empty:
+    description: No model configured yet. Create one for AI-powered features.
+    create: New Configuration
+  protocol:
+    openai: OpenAI Compatible
+    anthropic: Anthropic
+  config:
+    active: Active
+    setActive: Set Active
+    test: Test
+    edit: Edit
+    delete: Delete
+    deleteConfirm: Delete this model configuration?
+    testResult:
+      success: Success ({{durationMs}} ms)
+      reply: 'Reply: {{reply}}'
+      failureReason: 'Test failed: {{reason}}'
+      reason:
+        invalid-config: Incomplete configuration
+        network: Network error, unable to reach the API URL (if a proxy is in use, check that its node is reachable)
+        auth: Authentication failed, please check the API key
+        not-found: Endpoint or model not found (404)
+        unknown: Unknown error
+  fetchModels:
+    button: Fetch Models
+    succeeded_one: Fetched {{count}} model
+    succeeded_other: Fetched {{count}} models
+    failedReason: 'Failed to fetch models: {{reason}}'
+  form:
+    createTitle: New Model Configuration
+    editTitle: Edit Model Configuration
+    name: Name
+    namePlaceholder: e.g. OpenAI Official
+    protocol: Protocol
+    baseUrl: API URL
+    baseUrlHint: Fill up to the version segment, e.g. https://api.openai.com/v1
+    apiKey: API Key
+    apiKeyPlaceholder: Leave empty to skip authentication
+    modelId: Model
+    modelIdPlaceholder: Type or pick a model ID from the list
+    note: Note
+    notePlaceholder: Optional
+    save: Save
+    cancel: Cancel
+    validation:
+      nameRequired: Name is required
+      baseUrlRequired: API URL is required
+      modelIdRequired: Model ID is required

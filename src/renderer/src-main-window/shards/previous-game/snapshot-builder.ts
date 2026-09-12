@@ -236,6 +236,7 @@ export function computeMergedPremadeTeamMap(
 export interface PreviousGameSnapshotData {
   selfPuuid: string
   core: PreviousGameCore
+  matchHistoryTagParams: { tag?: string; tagsQueryType?: 'AND' | 'OR' }
   matchHistory: Record<string, PreviousGameMatchHistoryEntry>
   matchHistoryLoadingState: Record<string, string>
   summoner: Record<string, SummonerInfo>
@@ -268,7 +269,7 @@ export function buildPreviousGameSnapshot(data: PreviousGameSnapshotData): Ongoi
     mergedPremadeTeamMap: computeMergedPremadeTeamMap(core.teams, data.inferredPremadeTeams),
     teamParticipantGroups: {},
     analysis: data.analysis,
-    matchHistoryTagParams: {},
+    matchHistoryTagParams: data.matchHistoryTagParams,
     matchHistory: data.matchHistory,
     matchHistoryLoadingState: data.matchHistoryLoadingState,
     summoner: data.summoner,
