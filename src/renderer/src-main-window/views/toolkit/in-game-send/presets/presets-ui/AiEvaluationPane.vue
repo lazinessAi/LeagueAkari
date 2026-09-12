@@ -218,7 +218,7 @@
     </NCollapse>
 
     <!-- 手动查询 -->
-    <SettingsRow class="mt-3" :label-width="180" align="center" no-x-padding>
+    <SettingsRow class="mt-3" :label-width="180" align="center" no-x-padding control-full-line>
       <template #label>
         {{ t('manual.label') }}
       </template>

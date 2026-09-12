@@ -1,7 +1,5 @@
 import { useSummonerFetch } from '@renderer-shared/composables/useSummonerFetch'
 import { useInstance } from '@renderer-shared/shards'
-import { AiModelRenderer } from '@renderer-shared/shards/ai-model'
-import { useAiModelStore } from '@renderer-shared/shards/ai-model/store'
 import { useExtraAssetsStore } from '@renderer-shared/shards/extra-assets/store'
 import { InGameSendRenderer } from '@renderer-shared/shards/in-game-send'
 import { IN_GAME_SEND_MAIN_NAMESPACE } from '@renderer-shared/shards/in-game-send/context'
@@ -15,16 +13,13 @@ import type { InGameSendPresetNameDisplayStrategy } from '@shared/shards/in-game
 import { useTranslation } from 'i18next-vue'
 import { computed, reactive, watch } from 'vue'
 
-import { buildAramMayhemReport } from './aggregate'
+import { buildAramMayhemReport, buildEvaluationText } from './aggregate'
 import {
   AI_EVALUATION_CHAT_LINE_MAX_LENGTH,
-  AI_EVALUATION_CHAT_OPTIONS,
   AI_EVALUATION_CONCURRENCY,
   AI_EVALUATION_MIN_SAMPLE
 } from './constants'
-import { extractEvaluationSentence } from './extract'
 import { fetchAramMayhemGameSummaries } from './fetch-player-games'
-import { AI_EVALUATION_SYSTEM_PROMPT, buildAiEvaluationUserMessage } from './prompt'
 
 export type AiEvaluationTargetId = 'friendly' | 'enemy' | 'all'
 
@@ -134,10 +129,8 @@ export function useAiEvaluation() {
   const ogs = useOngoingGameStore()
   const lcStore = useLeagueClientStore()
   const sgpStore = useSgpStore()
-  const aiModelStore = useAiModelStore()
   const extraAssetsStore = useExtraAssetsStore()
   const sgp = useInstance(SgpRenderer)
-  const aiModel = useInstance(AiModelRenderer)
   const igs = useInstance(InGameSendRenderer)
   const igsStore = useInGameSendStore()
   const ipc = useInstance(AkariIpcRenderer)
@@ -167,12 +160,6 @@ export function useAiEvaluation() {
       !!sgpStore.availability.sgpServerId
   )
 
-  const activeModelConfig = computed(() =>
-    aiModelStore.settings.configs.find(
-      (config) => config.id === aiModelStore.settings.activeConfigId
-    )
-  )
-
   // 这些阶段下 ongoing-game 已有成员数据（房间为 LOBBY 桶，选人/对局为 TEAM-100/200）
   const PLAYER_READY_PHASES = ['lobby', 'draft', 'champ-select', 'in-game']
 
@@ -189,10 +176,6 @@ export function useAiEvaluation() {
   function commonDisabledReason(): string {
     if (!sgpReady.value) {
       return t('reasons.sgpUnavailable')
-    }
-
-    if (!activeModelConfig.value) {
-      return t('reasons.noActiveModel')
     }
 
     return ''
@@ -445,21 +428,8 @@ export function useAiEvaluation() {
         return
       }
 
-      const result = await aiModel.chatCompletion(
-        [
-          { role: 'system', content: AI_EVALUATION_SYSTEM_PROMPT },
-          { role: 'user', content: buildAiEvaluationUserMessage(entry.name, report) }
-        ],
-        AI_EVALUATION_CHAT_OPTIONS
-      )
-
-      if (result.ok) {
-        entry.reply = extractEvaluationSentence(entry.name, result.reply)
-        entry.status = 'done'
-      } else {
-        entry.status = 'error'
-        entry.errorMessage = `${result.reason}: ${result.message}`
-      }
+      entry.reply = buildEvaluationText(report)
+      entry.status = 'done'
     } catch (error) {
       entry.status = 'error'
       entry.errorMessage = error instanceof Error ? error.message : String(error)
@@ -602,7 +572,6 @@ export function useAiEvaluation() {
     setAllPlayersSelected,
     sgpReady,
     commonDisabledReason,
-    activeModelConfig,
     ongoingGameReady,
     anyRowRunning,
     manualRunning,

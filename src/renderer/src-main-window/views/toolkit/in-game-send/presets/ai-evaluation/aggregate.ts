@@ -115,6 +115,73 @@ function teamTowerKills(game: AramMayhemGameJson, teamId: number): number {
   return entry?.towerKills ?? entry?.objectives?.tower?.kills ?? 0
 }
 
+/** 定位桶的中文标签 */
+export const ARAM_MAYHEM_BUCKET_LABELS: Record<string, string> = {
+  carry: '输出位',
+  fighter: '战士',
+  frontline: '前排',
+  support: '辅助',
+  other: '其他'
+}
+
+/**
+ * 用模板从聚合报告直接生成评价文字（不经过 AI）。
+ * 嫌疑限定语（刷负/玩小号）由确定性概率计算，高于展示阈值时追加在句中。
+ */
+export function buildEvaluationText(report: AramMayhemReport): string {
+  const n = report.sampleSize
+
+  if (n < 10) {
+    return `样本不足（${n} 场），数据过少无法给出可靠评价`
+  }
+
+  const overall = report.overall
+  const clauses: string[] = []
+  const suspicionClause = buildSuspicionClause(report)
+  if (suspicionClause) {
+    clauses.push(suspicionClause)
+  }
+
+  clauses.push(
+    `主玩${ARAM_MAYHEM_BUCKET_LABELS[report.mainPosition.bucket] ?? report.mainPosition.bucket}（${report.mainPosition.games}场、胜率${Math.round((report.conditional[report.mainPosition.bucket]?.winRate ?? 0) * 100)}%、伤转率${Math.round((report.conditional[report.mainPosition.bucket]?.avgDamageGoldEfficiency ?? 0) * 100)}%、经济${report.conditional[report.mainPosition.bucket]?.avgGoldPerMin ?? 0}/分）`
+  )
+
+  const fighter = report.conditional.fighter
+  if (fighter && fighter.games >= 3) {
+    clauses.push(`玩战士时伤转率${Math.round(fighter.avgDamageGoldEfficiency * 100)}%`)
+  }
+
+  const frontline = report.conditional.frontline
+  if (frontline && frontline.games >= 3) {
+    clauses.push(`玩前排时承伤占比${Math.round(frontline.avgTakenShare * 100)}%`)
+  }
+
+  return `近${n}场胜率${Math.round(overall.winRate * 100)}%（${clauses.join('，')}）`
+}
+
+/** 嫌疑限定语的展示阈值：低于此概率不展示（低嫌疑不对外） */
+export const AI_SUSPICION_DISPLAY_THRESHOLD = 0.5
+
+/**
+ * 按确定性概率组装嫌疑限定语（刷负/玩小号），供调用方拼接进 AI 评价句。
+ * 低于展示阈值的嫌疑不展示。
+ */
+export function buildSuspicionClause(report: AramMayhemReport): string {
+  const clauses: string[] = []
+
+  const winTradingProbability = report.winTrading?.suspicionProbability ?? 0
+  if (winTradingProbability >= AI_SUSPICION_DISPLAY_THRESHOLD) {
+    clauses.push(`刷负嫌疑${Math.round(winTradingProbability * 100)}%`)
+  }
+
+  const smurfProbability = report.smurf?.suspicionProbability ?? 0
+  if (smurfProbability >= AI_SUSPICION_DISPLAY_THRESHOLD) {
+    clauses.push(`疑似玩小号（${Math.round(smurfProbability * 100)}%）`)
+  }
+
+  return clauses.join('、')
+}
+
 export function buildAramMayhemReport(args: {
   playerName: string
   playerPuuid: string
@@ -396,31 +463,38 @@ export function buildAramMayhemReport(args: {
     ? round(topPairCount / surrenderedLosses.length, 3)
     : 0
 
-  let suspicionLevel: AiEvaluationSuspicionLevel = 'none'
-  let suspicionProbability = 0
-  if (surrenderedLosses.length >= 5 && premadePairRate >= 0.5) {
-    suspicionLevel = 'high'
-    suspicionProbability = 0.85
-  } else if (premadePairRate >= 0.3) {
-    suspicionLevel = 'medium'
-    suspicionProbability = 0.5
-  } else if (advantageSurrenderLosses.length >= 2 && advantageSurrenderRate >= 0.25) {
-    suspicionLevel = 'high'
-    suspicionProbability = 0.75
-  } else if (advantageSurrenderLosses.length >= 2 && advantageSurrenderRate >= 0.1) {
-    suspicionLevel = 'medium'
-    suspicionProbability = 0.4
-  } else if (advantageSurrenderLosses.length >= 1) {
-    suspicionLevel = 'low'
-    suspicionProbability = 0.1
-  }
+  const overallWinRate = round(wins / n, 3)
+  const highWinRate = overallWinRate >= 0.7
+  const lowLevelHighWinRate = playerLevel != null && playerLevel < 100 && highWinRate
 
-  // 低嫌疑（<中）不对外展示
-  if (suspicionProbability < 0.6) {
-    suspicionLevel = 'none'
-    suspicionProbability = 0
+  // 刷负嫌疑（连续信号，基于已确认的刷负画像：固定车队投降 + 塔领先 + 高投降败局占比）
+  // premadePairRate 是主证据但需折扣（好友固定开黑基线远高于 0）；高胜率是反证（降 25pp）
+  const surrenderedLossShare = n ? round(surrenderedLosses.length / n, 3) : 0
+  let winTradingSuspicionProbability = 0
+  if (surrenderedLosses.length >= 2) {
+    winTradingSuspicionProbability = round(
+      Math.max(
+        0,
+        Math.min(
+          0.95,
+          0.2 +
+            Math.max(0, premadePairRate - 0.3) * 0.8 +
+            Math.max(0, towerLeadSurrenderRate - 0.56) * 0.3 +
+            Math.max(0, surrenderedLossShare - 0.86) * 0.3 -
+            (overallWinRate >= 0.6 ? 0.25 : 0)
+        )
+      ),
+      2
+    )
   }
-
+  const winTradingSuspicionLevel: AiEvaluationSuspicionLevel =
+    winTradingSuspicionProbability >= 0.75
+      ? 'high'
+      : winTradingSuspicionProbability >= 0.5
+        ? 'medium'
+        : winTradingSuspicionProbability > 0
+          ? 'low'
+          : 'none'
   // 小号嫌疑（启发式，积分制）
   // S1 成长断层：近段(最近25场) vs 远段(更早25场) 胜率差≥25pp 或 伤转率差≥30pp（两段各≥10场才有效）
   // S2 低等级（分级计分）：<100 计1；≤50 计2；≤30 计3；≤10 计4
@@ -451,34 +525,35 @@ export function buildAramMayhemReport(args: {
   }
 
   const guardianStartCount = entries.filter((g) => g.guardianStart).length
-  const guardianStartHit = guardianStartCount >= 3
   const flashSwap = entries.some((g) => g.flashOnD) && entries.some((g) => g.flashOnF)
 
-  let smurfScore =
-    (growthCliff ? 1 : 0) + levelScore + (guardianStartHit ? 1 : 0) + (flashSwap ? 1 : 0)
-  let smurfSuspicionLevel: AiEvaluationSuspicionLevel = 'none'
+  // 小号嫌疑（连续信号，核心：低等级+高胜率的组合；成长断层/守护者出门装/闪现异位为加成）
   let smurfSuspicionProbability = 0
-  if (smurfScore >= 3) {
-    smurfSuspicionLevel = 'high'
-    smurfSuspicionProbability = 0.85
-  } else if (smurfScore === 2) {
-    smurfSuspicionLevel = 'medium'
-    smurfSuspicionProbability = 0.6
-  } else if (smurfScore === 1) {
-    smurfSuspicionLevel = 'low'
-    smurfSuspicionProbability = 0.3
+  if (lowLevelHighWinRate) {
+    smurfSuspicionProbability = 0.7
+    if ((playerLevel ?? 999) <= 50) smurfSuspicionProbability = 0.8
+    if ((playerLevel ?? 999) <= 30) smurfSuspicionProbability = 0.9
+  } else if (playerLevel != null && playerLevel < 100 && overallWinRate >= 0.6) {
+    smurfSuspicionProbability = 0.45
   }
-
-  // 低嫌疑（<中）不对外展示；大概率刷负时跳过小号判断——4/5 黑刷负的数据特征会大量命中小号信号，但并非小号
-  if (suspicionProbability >= 0.85) {
-    smurfScore = 0
-    smurfSuspicionLevel = 'none'
-    smurfSuspicionProbability = 0
-  } else if (smurfSuspicionProbability < 0.6) {
-    smurfSuspicionLevel = 'none'
-    smurfSuspicionProbability = 0
+  if (growthCliff) {
+    smurfSuspicionProbability = Math.max(smurfSuspicionProbability, 0.6)
   }
-
+  if (guardianStartCount >= 3) {
+    smurfSuspicionProbability = Math.min(0.95, Math.max(smurfSuspicionProbability, 0.4))
+  }
+  if (flashSwap) {
+    smurfSuspicionProbability = Math.min(0.95, smurfSuspicionProbability + 0.1)
+  }
+  smurfSuspicionProbability = round(smurfSuspicionProbability, 2)
+  const smurfSuspicionLevel: AiEvaluationSuspicionLevel =
+    smurfSuspicionProbability >= 0.75
+      ? 'high'
+      : smurfSuspicionProbability >= 0.5
+        ? 'medium'
+        : smurfSuspicionProbability > 0
+          ? 'low'
+          : 'none'
   return {
     player: playerName,
     sampleSize: n,
@@ -546,24 +621,26 @@ export function buildAramMayhemReport(args: {
       advantageSurrenderCount: advantageSurrenderLosses.length,
       advantageSurrenderRate,
       towerLeadSurrenderRate,
-      suspicionLevel,
-      suspicionProbability
+      suspicionProbability: winTradingSuspicionProbability,
+      suspicionLevel: winTradingSuspicionLevel
     },
     smurf: {
       heuristicNote:
-        '积分制：S1 成长断层(近25场vs更早25场胜率差≥25pp或伤转率差≥30pp，两段各≥10场)+1；S2 低等级(<100)+1/≤50+2/≤30+3/≤10+4；S3 守护者出门装≥3场+1；S4 闪现异位+1。总分 1=低(30%) 2=中(60%) ≥3=高(85%)。刷负高嫌疑时不做小号判断（数据特征重叠会误判）；低嫌疑不展示',
-      score: smurfScore,
+        '仅输出事实信号，可能性由 AI 综合判断：growthCliff=近25场vs更早25场胜率差≥25pp或伤转率差≥30pp（两段各≥10场）；winRateGap/damageGoldEfficiencyGap=前后段差值(pp)；playerLevel/levelScore=账号等级（<100 偏低，越低越可疑）；overallWinRate/highWinRate/lowLevelHighWinRate=总胜率与"低等级+高胜率"组合（小号的典型画像）；guardianStartCount=守护者出门装场次（正常≈0）；flashSwap=D 闪与 F 闪并存',
       signals: {
         growthCliff,
         winRateGap,
         damageGoldEfficiencyGap: dmgEffGap,
         playerLevel: playerLevel ?? null,
         levelScore,
+        overallWinRate,
+        highWinRate,
+        lowLevelHighWinRate,
         guardianStartCount,
         flashSwap
       },
-      suspicionLevel: smurfSuspicionLevel,
-      suspicionProbability: smurfSuspicionProbability
+      suspicionProbability: smurfSuspicionProbability,
+      suspicionLevel: smurfSuspicionLevel
     }
   }
 }

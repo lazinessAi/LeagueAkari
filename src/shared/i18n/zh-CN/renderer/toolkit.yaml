@@ -481,10 +481,10 @@ toolkit:
           draftOnly: 草稿模式不可发送
           unavailable: 仅可在英雄选择、房间或游戏内使用
       aiEvaluation:
-        label: AI 评价
+        label: 海斗评价
         notice: 实验功能：目前仅支持海克斯大乱斗对局的数据分析，其他模式暂不支持。
         shortcut: 快捷键
-        description: 基于玩家近 50 场海克斯大乱斗数据生成 AI 一句话评价。试运行会拉取数据并调用当前激活的 AI 模型（并发上限 2），全部回复收齐后才能发送。
+        description: 基于玩家近 50 场海克斯大乱斗数据生成评价。点击试运行拉取对局数据并分析，全部玩家完成后才能发送。
         dryRun: 试运行
         sendToChat: 发送到聊天
         copy: 复制
@@ -503,11 +503,11 @@ toolkit:
           lobby: 房间
           champSelect: 英雄选择
           inGame: 游戏中
-        lowSampleReply: 样本不足（{{count}} 场），无法给出可靠的 AI 评价
+        lowSampleReply: 样本不足（{{count}} 场），数据过少无法给出可靠评价
         playerStatus:
           pending: 等待中
           fetching: 拉取战绩中...
-          analyzing: AI 评价中...
+          analyzing: 分析中...
           noData: 近 50 场无海克斯大乱斗对局
           error: 失败：{{message}}
         manual:
