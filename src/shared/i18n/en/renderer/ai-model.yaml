@@ -21,6 +21,7 @@ aiModel:
       failureReason: 'Test failed: {{reason}}'
       reason:
         invalid-config: Incomplete configuration
+        no-active-config: No active AI model, select one on the AI Models page first
         network: Network error, unable to reach the API URL (if a proxy is in use, check that its node is reachable)
         auth: Authentication failed, please check the API key
         not-found: Endpoint or model not found (404)

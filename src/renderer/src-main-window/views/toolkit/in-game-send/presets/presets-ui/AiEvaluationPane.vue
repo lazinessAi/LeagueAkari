@@ -1,0 +1,301 @@
+<template>
+  <div class="flex flex-col pt-2">
+    <div class="text-xs leading-relaxed text-black/60 dark:text-white/70">
+      {{ t('description') }}
+    </div>
+
+    <SettingsRow
+      v-for="target of targets"
+      :key="target.id"
+      :label-width="160"
+      :label-description="targetDescription(target)"
+      align="center"
+      no-x-padding
+    >
+      <template #label>
+        <div class="flex items-center gap-1.5">
+          <NIcon><component :is="target.icon" /></NIcon>
+          <span>{{ target.label }}</span>
+        </div>
+      </template>
+
+      <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1.5">
+          <span class="text-xs text-black/60 dark:text-white/60">{{ t('shortcut') }}</span>
+          <ShortcutSelector
+            :shortcut-id="igsStore.settings.aiEvaluationTargetShortcuts[target.id]"
+            :target-id="getShortcutTargetId(target.id)"
+            @update:shortcut-id="(id) => setShortcut(target.id, id)"
+          />
+        </div>
+        <NDivider vertical />
+        <NPopover :disabled="!getTargetSendDisabledReason(target.id)" trigger="hover">
+          <template #trigger>
+            <NButton
+              size="small"
+              :disabled="getTargetSendDisabledReason(target.id) !== ''"
+              @click="handleSendTarget(target.id)"
+            >
+              <template #icon>
+                <NIcon><SendIcon /></NIcon>
+              </template>
+              {{ t('sendToChat') }}
+            </NButton>
+          </template>
+          {{ getTargetSendDisabledReason(target.id) }}
+        </NPopover>
+
+        <NPopover :disabled="!targetDryRunDisabledReason(target.id)" trigger="hover">
+          <template #trigger>
+            <NButton
+              size="small"
+              secondary
+              :loading="rows[target.id].status === 'running'"
+              :disabled="!!targetDryRunDisabledReason(target.id)"
+              @click="runTargetEvaluation(target.id)"
+            >
+              <template #icon>
+                <NIcon><DryRunIcon /></NIcon>
+              </template>
+              {{ t('dryRun') }}
+            </NButton>
+          </template>
+          {{ targetDryRunDisabledReason(target.id) }}
+        </NPopover>
+      </div>
+    </SettingsRow>
+
+    <!-- Keep the final row divider when content follows this group. -->
+    <span hidden aria-hidden="true"></span>
+
+    <!-- 评价结果 -->
+    <div class="mt-3 flex flex-col gap-2">
+      <template v-for="target of targets" :key="target.id">
+        <div v-if="rows[target.id].evaluations.length" class="flex flex-col gap-1.5">
+          <div class="text-xs font-bold text-black/70 dark:text-white/70">
+            {{ target.label }}
+            <span v-if="rows[target.id].status === 'ready'" class="ml-1 font-normal">
+              {{ t('rowReady', { count: doneCount(target.id) }) }}
+            </span>
+          </div>
+
+          <div
+            v-for="evaluation of rows[target.id].evaluations"
+            :key="evaluation.puuid"
+            class="rounded border border-black/10 bg-black/5 px-3 py-2 text-xs leading-relaxed dark:border-white/10 dark:bg-white/5"
+          >
+            <span class="font-bold">{{ maskedName(evaluation.name) }}</span>
+            <span v-if="evaluation.status === 'done'" class="ml-2">{{ evaluation.reply }}</span>
+            <span v-else class="ml-2 text-black/50 dark:text-white/50">
+              {{ playerStatusText(evaluation) }}
+            </span>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- 分析提示词（只读展示） -->
+    <NCollapse class="mt-3">
+      <NCollapseItem :title="t('promptTitle')">
+        <div
+          class="max-h-60 overflow-auto rounded bg-black/5 p-2 text-xs leading-relaxed whitespace-pre-wrap dark:bg-white/5"
+        >
+          {{ AI_EVALUATION_SYSTEM_PROMPT }}
+        </div>
+      </NCollapseItem>
+    </NCollapse>
+
+    <!-- 手动查询 -->
+    <SettingsRow class="mt-3" :label-width="180" align="center" no-x-padding>
+      <template #label>
+        {{ t('manual.label') }}
+      </template>
+
+      <div class="flex w-full items-center gap-2">
+        <NInput
+          v-model:value="manual.input"
+          size="small"
+          :placeholder="t('manual.placeholder')"
+          :disabled="manualRunning"
+          @keydown.enter="runManualEvaluation"
+        />
+        <NPopover :disabled="!manualQueryDisabledReason" trigger="hover">
+          <template #trigger>
+            <NButton
+              size="small"
+              secondary
+              :loading="manualRunning"
+              :disabled="!!manualQueryDisabledReason"
+              @click="runManualEvaluation"
+            >
+              {{ t('manual.query') }}
+            </NButton>
+          </template>
+          {{ manualQueryDisabledReason }}
+        </NPopover>
+      </div>
+    </SettingsRow>
+
+    <div
+      v-if="manual.entry"
+      class="mt-2 rounded border border-black/10 bg-black/5 px-3 py-2 text-xs leading-relaxed dark:border-white/10 dark:bg-white/5"
+    >
+      <span class="font-bold">{{ maskedName(manual.entry.name) }}</span>
+      <div v-if="manual.entry.status === 'done'" class="mt-1">{{ manual.entry.reply }}</div>
+      <div v-else class="mt-1 text-black/50 dark:text-white/50">
+        {{ playerStatusText(manual.entry) }}
+      </div>
+
+      <div v-if="manual.entry.status === 'done'" class="mt-2 flex items-center gap-2">
+        <NButton size="tiny" secondary :focusable="false" @click="copyManualReply">
+          {{ t('copy') }}
+        </NButton>
+        <NRadioGroup v-model:value="manual.sendTarget" size="small">
+          <NRadioButton v-for="target of targets" :key="target.id" :value="target.id">
+            {{ target.label }}
+          </NRadioButton>
+        </NRadioGroup>
+        <NButton
+          size="tiny"
+          type="primary"
+          secondary
+          :loading="manualSending"
+          @click="handleSendManual"
+        >
+          {{ t('sendToChat') }}
+        </NButton>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import SettingsRow from '@renderer-shared/components/SettingsRow.vue'
+import { InGameSendRenderer } from '@renderer-shared/shards/in-game-send'
+import { useInGameSendStore } from '@renderer-shared/shards/in-game-send/store'
+import { useInstance } from '@renderer-shared/shards'
+import { useStreamerModeMaskedText } from '@renderer-shared/composables/useStreamerModeMaskedText'
+import { getInGameSendAiEvaluationShortcutTargetId } from '@shared/shards/in-game-send'
+import ShortcutSelector from '@main-window/components/ShortcutSelector.vue'
+import { DocumentText24Regular as DryRunIcon, Send24Filled as SendIcon } from '@vicons/fluent'
+import { useTranslation } from 'i18next-vue'
+import {
+  NButton,
+  NCollapse,
+  NCollapseItem,
+  NDivider,
+  NIcon,
+  NInput,
+  NPopover,
+  NRadioButton,
+  NRadioGroup,
+  useMessage
+} from 'naive-ui'
+import { ref } from 'vue'
+
+import { AI_EVALUATION_SYSTEM_PROMPT } from '../ai-evaluation/prompt'
+import {
+  type AiEvaluationPlayerEntry,
+  type AiEvaluationTargetId,
+  useAiEvaluation
+} from '../ai-evaluation/use-ai-evaluation'
+import { usePresetTargets } from '../widgets/usePresetTargets'
+
+const { t } = useTranslation('renderer', { keyPrefix: 'toolkit.inGameSend.presets.aiEvaluation' })
+
+const message = useMessage()
+const { masked } = useStreamerModeMaskedText()
+
+const {
+  rows,
+  manual,
+  manualRunning,
+  commonDisabledReason,
+  getTargetDisabledReason,
+  getTargetSendDisabledReason,
+  getTargetPlayers,
+  runTargetEvaluation,
+  sendTargetReplies,
+  runManualEvaluation,
+  sendManualReply
+} = useAiEvaluation()
+
+const targets = usePresetTargets()
+const igsStore = useInGameSendStore()
+const igs = useInstance(InGameSendRenderer)
+const manualSending = ref(false)
+
+function getShortcutTargetId(target: AiEvaluationTargetId) {
+  return getInGameSendAiEvaluationShortcutTargetId(target)
+}
+
+function setShortcut(target: AiEvaluationTargetId, shortcutId: string | null) {
+  void igs.setAiEvaluationTargetShortcut(target, shortcutId)
+}
+
+function targetDryRunDisabledReason(target: AiEvaluationTargetId) {
+  return getTargetDisabledReason(target)
+}
+
+function targetDescription(target: { id: AiEvaluationTargetId; description: string }) {
+  const count = getTargetPlayers(target.id).length
+  return `${target.description} · ${t('teamsCount', { count })}`
+}
+
+function doneCount(target: AiEvaluationTargetId) {
+  return rows[target].evaluations.filter((e) => e.status === 'done').length
+}
+
+function playerStatusText(evaluation: AiEvaluationPlayerEntry) {
+  switch (evaluation.status) {
+    case 'pending':
+      return t('playerStatus.pending')
+    case 'fetching':
+      return t('playerStatus.fetching')
+    case 'analyzing':
+      return t('playerStatus.analyzing')
+    case 'no-data':
+      return t('playerStatus.noData')
+    case 'error':
+      return t('playerStatus.error', { message: evaluation.errorMessage })
+    default:
+      return ''
+  }
+}
+
+/** 界面上的玩家名遵守主播模式脱敏 */
+function maskedName(name: string) {
+  return masked(name)
+}
+
+function manualQueryDisabledReason() {
+  if (manualRunning.value) {
+    return t('reasons.running')
+  }
+
+  return commonDisabledReason()
+}
+
+async function copyManualReply() {
+  const reply = manual.entry?.reply
+  if (!reply) return
+
+  await navigator.clipboard.writeText(reply)
+  message.success(t('copied'))
+}
+
+async function handleSendManual() {
+  if (manualSending.value) return
+
+  manualSending.value = true
+  try {
+    await sendManualReply()
+  } finally {
+    manualSending.value = false
+  }
+}
+
+async function handleSendTarget(target: AiEvaluationTargetId) {
+  await sendTargetReplies(target)
+}
+</script>

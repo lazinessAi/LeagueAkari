@@ -2,6 +2,9 @@ import {
   AI_MODEL_TEST_MAX_TOKENS,
   AI_MODEL_TEST_PROMPT,
   ANTHROPIC_VERSION_HEADER_VALUE,
+  type AiModelChatCompletionOptions,
+  type AiModelChatMessage,
+  type AiModelChatResult,
   type AiModelConfig,
   type AiModelFetchModelsResult,
   type AiModelOperationErrorReason,
@@ -110,6 +113,11 @@ function stringifyContentParts(content: unknown): string {
   return ''
 }
 
+/** 部分推理模型会把思考过程以 <think> 块混在正文里返回，剥离后再交给调用方 */
+function sanitizeReply(reply: string): string {
+  return reply.replace(/<think>[\s\S]*?<\/think>/gi, '').trim()
+}
+
 /**
  * 面向渲染端的模型请求执行器：始终使用调用方传入的完整配置发起请求，
  * 与已保存的设置无关，因此编辑中尚未保存的配置也可以直接测试。
@@ -140,6 +148,72 @@ export class AiModelRequestExecutor {
       })
 
       return { ok: true, models: extractOpenAiModelIds(response.data) }
+    } catch (error) {
+      return this._toFailure(error)
+    }
+  }
+
+  /**
+   * 正式的对话补全：使用给定配置（通常为当前激活配置）发送多轮消息并返回模型回复文本。
+   */
+  async chatCompletion(
+    config: AiModelConfig,
+    messages: AiModelChatMessage[],
+    options: AiModelChatCompletionOptions = {}
+  ): Promise<AiModelChatResult> {
+    const validationFailure = this._validateConfig(config)
+    if (validationFailure) {
+      return validationFailure
+    }
+
+    const { protocol, baseUrl, apiKey, modelId } = normalizeAiModelConfig(config)
+    if (!modelId) {
+      return this._createFailure('invalid-config', 'model id is empty')
+    }
+
+    const temperature = options.temperature ?? 0.2
+    const maxTokens = options.maxTokens ?? 512
+
+    try {
+      let response: { data: unknown }
+
+      if (protocol === 'anthropic') {
+        response = await this._httpClient.post(
+          joinAiModelApiUrl(baseUrl, '/messages'),
+          {
+            model: modelId,
+            messages: messages.filter((m) => m.role !== 'system'),
+            system: messages
+              .filter((m) => m.role === 'system')
+              .map((m) => m.content)
+              .join('\n\n'),
+            temperature,
+            max_tokens: maxTokens
+          },
+          {
+            headers: this._createAnthropicHeaders(apiKey),
+            timeout: options.timeoutMs
+          }
+        )
+
+        return { ok: true, reply: sanitizeReply(extractAnthropicReplyPreview(response.data)) }
+      }
+
+      response = await this._httpClient.post(
+        joinAiModelApiUrl(baseUrl, '/chat/completions'),
+        {
+          model: modelId,
+          messages,
+          temperature,
+          max_tokens: maxTokens
+        },
+        {
+          headers: this._createOpenAiHeaders(apiKey),
+          timeout: options.timeoutMs
+        }
+      )
+
+      return { ok: true, reply: sanitizeReply(extractOpenAiReplyPreview(response.data)) }
     } catch (error) {
       return this._toFailure(error)
     }

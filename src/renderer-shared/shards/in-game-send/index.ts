@@ -27,6 +27,7 @@ import {
   type InGameSendRendererContext
 } from './context'
 import { syncInGameSendSettings, syncInGameSendState } from './settings-sync'
+import { useInGameSendStore } from './store'
 
 const MAIN_SHARD_NAMESPACE = IN_GAME_SEND_MAIN_NAMESPACE
 
@@ -223,5 +224,15 @@ export class InGameSendRenderer implements IAkariShardInitDispose {
 
   clearPresetSelections() {
     return this._ipc.call(MAIN_SHARD_NAMESPACE, 'clearPresetSelections')
+  }
+
+  /** 更新 AI 评价某个目标的发送快捷键（整体替换该设置） */
+  setAiEvaluationTargetShortcut(target: InGameSendPresetTarget, shortcutId: string | null) {
+    const { aiEvaluationTargetShortcuts } = useInGameSendStore().settings
+
+    return this._settingUtils.set(MAIN_SHARD_NAMESPACE, 'aiEvaluationTargetShortcuts', {
+      ...aiEvaluationTargetShortcuts,
+      [target]: shortcutId
+    })
   }
 }

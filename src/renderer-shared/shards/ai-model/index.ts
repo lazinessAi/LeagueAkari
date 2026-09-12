@@ -1,5 +1,8 @@
 import { Dep, IAkariShardInitDispose, Shard } from '@shared/akari-shard'
 import {
+  type AiModelChatCompletionOptions,
+  type AiModelChatMessage,
+  type AiModelChatResult,
   type AiModelConfig,
   type AiModelFetchModelsResult,
   type AiModelTestResult
@@ -56,5 +59,15 @@ export class AiModelRenderer implements IAkariShardInitDispose {
 
   testConfig(config: AiModelConfig) {
     return this._ipc.call<AiModelTestResult>(AI_MODEL_MAIN_NAMESPACE, 'testConfig', config)
+  }
+
+  /** 正式对话补全，主进程侧使用当前"使用中"的模型配置 */
+  chatCompletion(messages: AiModelChatMessage[], options?: AiModelChatCompletionOptions) {
+    return this._ipc.call<AiModelChatResult>(
+      AI_MODEL_MAIN_NAMESPACE,
+      'chatCompletion',
+      messages,
+      options
+    )
   }
 }

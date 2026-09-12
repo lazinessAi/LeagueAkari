@@ -4,6 +4,7 @@ import {
   createDefaultInGameSendFixedTextPresetItems,
   createDefaultInGameSendJunglePresetOptions,
   createDefaultInGameSendPremadePresetOptions,
+  createDefaultInGameSendPresetTargetShortcuts,
   createDefaultInGameSendRatingPresetOptions
 } from '@shared/shards/in-game-send'
 import { defineStore } from 'pinia'
@@ -18,7 +19,8 @@ export const useInGameSendStore = defineStore('shard:in-game-send-renderer', () 
     premadePresetOptions: createDefaultInGameSendPremadePresetOptions(),
     fixedTextPresetItems: createDefaultInGameSendFixedTextPresetItems(),
     customTemplateRiskNoticeShown: false,
-    customTemplateItems: createDefaultInGameSendCustomTemplateItems()
+    customTemplateItems: createDefaultInGameSendCustomTemplateItems(),
+    aiEvaluationTargetShortcuts: createDefaultInGameSendPresetTargetShortcuts()
   })
 
   /**

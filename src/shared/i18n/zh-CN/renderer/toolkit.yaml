@@ -480,6 +480,36 @@ toolkit:
           saveFirst: 请先保存当前修改
           draftOnly: 草稿模式不可发送
           unavailable: 仅可在英雄选择、房间或游戏内使用
+      aiEvaluation:
+        label: AI 评价
+        shortcut: 快捷键
+        description: 基于玩家近 50 场海克斯大乱斗数据生成 AI 一句话评价。试运行会拉取数据并调用当前激活的 AI 模型（并发上限 2），全部回复收齐后才能发送。
+        dryRun: 试运行
+        sendToChat: 发送到聊天
+        copy: 复制
+        copied: 已复制
+        promptTitle: 分析提示词
+        teamsCount: '{{count}} 名玩家'
+        rowReady: 已生成 {{count}} 条评价
+        reasons:
+          noOngoingGame: 当前没有进行中的对局
+          sgpUnavailable: SGP 数据源不可用或 token 未就绪
+          noActiveModel: 未配置或未激活 AI 模型
+          running: 正在获取与评价中
+          notReady: 请先完成试运行
+        lowSampleReply: 样本不足（{{count}} 场），无法给出可靠的 AI 评价
+        playerStatus:
+          pending: 等待中
+          fetching: 拉取战绩中...
+          analyzing: AI 评价中...
+          noData: 近 50 场无海克斯大乱斗对局
+          error: 失败：{{message}}
+        manual:
+          label: 手动查询
+          placeholder: 输入 游戏名#标签，例如 player#12345
+          query: 查询
+          inputInvalid: 请输入 游戏名#标签 格式的召唤师名
+          notFound: 未找到该召唤师
       customTemplate:
         label: 自定义模板
         risk:

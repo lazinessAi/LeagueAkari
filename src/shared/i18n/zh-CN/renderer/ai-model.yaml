@@ -21,6 +21,7 @@ aiModel:
       failureReason: 测试失败：{{reason}}
       reason:
         invalid-config: 配置不完整
+        no-active-config: 未激活 AI 模型，请先在 AI 模型页选择使用中的配置
         network: 网络错误，无法连接到 API 地址（若开启了代理，请检查代理节点是否可用）
         auth: 鉴权失败，请检查 API Key
         not-found: 接口或模型不存在（404）

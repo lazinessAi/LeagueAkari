@@ -4,11 +4,13 @@ import {
   type InGameSendFixedTextPresetItem,
   type InGameSendJunglePresetOptions,
   type InGameSendPremadePresetOptions,
+  type InGameSendPresetTargetShortcuts,
   type InGameSendRatingPresetOptions,
   createDefaultInGameSendCustomTemplateItems,
   createDefaultInGameSendFixedTextPresetItems,
   createDefaultInGameSendJunglePresetOptions,
   createDefaultInGameSendPremadePresetOptions,
+  createDefaultInGameSendPresetTargetShortcuts,
   createDefaultInGameSendRatingPresetOptions
 } from '@shared/shards/in-game-send'
 import { makeAutoObservable, observableRef } from 'mobx'
@@ -23,6 +25,8 @@ export class InGameSendSettings {
   fixedTextPresetItems: InGameSendFixedTextPresetItem[] =
     createDefaultInGameSendFixedTextPresetItems()
   customTemplateRiskNoticeShown = false
+  aiEvaluationTargetShortcuts: InGameSendPresetTargetShortcuts =
+    createDefaultInGameSendPresetTargetShortcuts()
   customTemplateItems: InGameSendCustomTemplateItem[] = createDefaultInGameSendCustomTemplateItems()
 
   setCancelShortcut(shortcut: string | null) {
@@ -39,7 +43,8 @@ export class InGameSendSettings {
       junglePresetOptions: observableRef,
       premadePresetOptions: observableRef,
       fixedTextPresetItems: observableRef,
-      customTemplateItems: observableRef
+      customTemplateItems: observableRef,
+      aiEvaluationTargetShortcuts: observableRef
     })
   }
 }

@@ -15,6 +15,7 @@ import { MobxUtilsMain } from '../mobx-utils'
 import { OngoingGameMain } from '../ongoing-game'
 import { SettingFactoryMain } from '../setting-factory'
 import { SetterSettingService } from '../setting-factory/setter-setting-service'
+import { AiEvaluationShortcutController } from './ai-evaluation-shortcut-controller'
 import {
   IN_GAME_SEND_ENTER_KEY_CODE,
   IN_GAME_SEND_ENTER_KEY_INTERNAL_DELAY,
@@ -32,7 +33,8 @@ import {
   inGameSendFixedTextPresetItemsSchema,
   inGameSendJunglePresetOptionsSchema,
   inGameSendPremadePresetOptionsSchema,
-  inGameSendRatingPresetOptionsSchema
+  inGameSendRatingPresetOptionsSchema,
+  inGameSendTargetShortcutsSchema
 } from './setting-schemas'
 import { InGameSendSettings, InGameSendState } from './state'
 
@@ -62,6 +64,7 @@ export class InGameSendMain implements IAkariShardInitDispose {
   private readonly _customTemplateController: InGameSendCustomTemplateController
   private readonly _presetController: InGameSendPresetController
   private readonly _presetSelectionController: InGameSendPresetSelectionController
+  private readonly _aiEvaluationShortcutController: AiEvaluationShortcutController
   private readonly _ipcHandlers: InGameSendIpcHandlers
 
   constructor(
@@ -113,6 +116,10 @@ export class InGameSendMain implements IAkariShardInitDispose {
           default: this.settings.customTemplateItems,
           schema: inGameSendCustomTemplateItemsSchema,
           transform: ({ value }) => normalizeInGameSendCustomTemplateItems(value)
+        },
+        aiEvaluationTargetShortcuts: {
+          default: this.settings.aiEvaluationTargetShortcuts,
+          schema: inGameSendTargetShortcutsSchema
         }
       },
       this.settings
@@ -146,6 +153,7 @@ export class InGameSendMain implements IAkariShardInitDispose {
     )
     this._presetController = new InGameSendPresetController(this._context, this._sendExecutor)
     this._presetSelectionController = new InGameSendPresetSelectionController(this._context)
+    this._aiEvaluationShortcutController = new AiEvaluationShortcutController(this._context)
     this._ipcHandlers = new InGameSendIpcHandlers(
       this._context,
       this._sendExecutor,
@@ -166,6 +174,7 @@ export class InGameSendMain implements IAkariShardInitDispose {
       'premadePresetOptions',
       'fixedTextPresetItems',
       'customTemplateRiskNoticeShown',
+      'aiEvaluationTargetShortcuts',
       'customTemplateItems'
     ])
 
@@ -184,6 +193,7 @@ export class InGameSendMain implements IAkariShardInitDispose {
     this._customTemplateController.start()
     this._presetController.start()
     this._presetSelectionController.start()
+    this._aiEvaluationShortcutController.start()
     this._ipcHandlers.register()
   }
 

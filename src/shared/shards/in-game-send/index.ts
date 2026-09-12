@@ -3,6 +3,8 @@ export type InGameSendPresetTarget = 'friendly' | 'enemy' | 'all'
 export const IN_GAME_SEND_PRESET_TARGETS = ['friendly', 'enemy', 'all'] as const
 
 export const IN_GAME_SEND_PRESET_SHORTCUT_TARGET_ID_PREFIX = 'in-game-send-main/preset'
+export const IN_GAME_SEND_AI_EVALUATION_SHORTCUT_TARGET_ID_PREFIX =
+  'in-game-send-main/ai-evaluation'
 
 export const IN_GAME_SEND_FIXED_TEXT_PRESET_MAX_ITEMS = 50
 export const IN_GAME_SEND_FIXED_TEXT_PRESET_TITLE_MAX_LENGTH = 64
@@ -241,6 +243,10 @@ export function getInGameSendCustomTemplateShortcutTargetId(
   target: InGameSendPresetTarget
 ) {
   return `${IN_GAME_SEND_PRESET_SHORTCUT_TARGET_ID_PREFIX}/custom-template/${id}/${target}`
+}
+
+export function getInGameSendAiEvaluationShortcutTargetId(target: InGameSendPresetTarget) {
+  return `${IN_GAME_SEND_AI_EVALUATION_SHORTCUT_TARGET_ID_PREFIX}/${target}`
 }
 
 export function normalizeInGameSendFixedTextPresetItem(

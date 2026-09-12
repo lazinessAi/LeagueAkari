@@ -4,6 +4,8 @@ import { useLeagueClientStore } from '@renderer-shared/shards/league-client/stor
 import { OngoingGameRenderer } from '@renderer-shared/shards/ongoing-game'
 import { useOngoingGameStore } from '@renderer-shared/shards/ongoing-game/store'
 import type { OngoingGameSnapshot } from '@shared/shards/ongoing-game'
+import type { MaybeRefOrGetter } from 'vue'
+import { toValue } from 'vue'
 
 import type { OngoingGameProviderValue } from './types'
 
@@ -86,63 +88,80 @@ export function createAkariOngoingGameProvider(): OngoingGameProviderValue {
   }
 }
 
+/**
+ * 上一局面板的 provider。
+ *
+ * 快照源可以传入 ref 或 getter（推荐），getter 在每次访问时读取最新快照，
+ * 这样后台补齐时间线、切换过滤条件等重新发布快照时面板能实时更新。
+ * 直接传入快照对象仍然兼容（视为固定快照）。
+ */
 export function createAkariPreviousGameProvider(
-  snapshot: OngoingGameSnapshot
+  snapshotSource: MaybeRefOrGetter<OngoingGameSnapshot | null>
 ): OngoingGameProviderValue {
   const appCommon = useAppCommonStore()
   const ongoingGame = useOngoingGameStore()
+
+  const readSnapshot = () => {
+    const snapshot = toValue(snapshotSource)
+
+    if (!snapshot) {
+      throw new Error('Previous game snapshot is not available')
+    }
+
+    return snapshot
+  }
 
   return {
     get settings() {
       return ongoingGame.settings
     },
     get queryStage() {
-      return snapshot.queryStage
+      return readSnapshot().queryStage
     },
     get draft() {
       return null
     },
     get teams() {
-      return snapshot.teams
+      return readSnapshot().teams
     },
     get championSelections() {
-      return snapshot.championSelections
+      return readSnapshot().championSelections
     },
     get positionAssignments() {
-      return snapshot.positionAssignments
+      return readSnapshot().positionAssignments
     },
     get mergedPremadeTeamMap() {
-      return snapshot.mergedPremadeTeamMap
+      return readSnapshot().mergedPremadeTeamMap
     },
     get analysis() {
-      return snapshot.analysis
+      return readSnapshot().analysis
     },
     get summoner() {
-      return snapshot.summoner
+      return readSnapshot().summoner
     },
     get rankedStats() {
-      return snapshot.rankedStats
+      return readSnapshot().rankedStats
     },
     get championMastery() {
-      return snapshot.championMastery
+      return readSnapshot().championMastery
     },
     get savedInfo() {
-      return snapshot.savedInfo
+      return readSnapshot().savedInfo
     },
     get cachedGames() {
-      return snapshot.cachedGames
+      return readSnapshot().cachedGames
     },
     get gameDetails() {
-      return snapshot.gameDetails
+      return readSnapshot().gameDetails
     },
     get matchHistory() {
-      return snapshot.matchHistory
+      return readSnapshot().matchHistory
     },
     get matchHistoryLoadingState() {
-      return snapshot.matchHistoryLoadingState
+      return readSnapshot().matchHistoryLoadingState
     },
     get spells() {
-      return snapshot.additional.spells
+      return readSnapshot().additional.spells
     },
     get isConnected() {
       return true
@@ -157,7 +176,7 @@ export function createAkariPreviousGameProvider(
       return appCommon.settings.streamerMode
     },
     get selfPuuid() {
-      return snapshot.selfPuuid
+      return readSnapshot().selfPuuid
     },
     reloadPlayer() {}
   }

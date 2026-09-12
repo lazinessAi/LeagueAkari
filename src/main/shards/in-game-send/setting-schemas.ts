@@ -3,15 +3,18 @@ import type {
   InGameSendFixedTextPresetItem,
   InGameSendJunglePresetOptions,
   InGameSendPremadePresetOptions,
+  InGameSendPresetTargetShortcuts,
   InGameSendRatingPresetOptions
 } from '@shared/shards/in-game-send'
 import { z } from 'zod'
 
-const presetTargetShortcutsSchema = z.object({
-  friendly: z.string().nullable(),
-  enemy: z.string().nullable(),
-  all: z.string().nullable()
-})
+export const inGameSendTargetShortcutsSchema: z.ZodType<InGameSendPresetTargetShortcuts> = z.object(
+  {
+    friendly: z.string().nullable(),
+    enemy: z.string().nullable(),
+    all: z.string().nullable()
+  }
+)
 
 const presetNameDisplayStrategySchema = z.enum([
   'preferName',
@@ -21,7 +24,7 @@ const presetNameDisplayStrategySchema = z.enum([
 
 export const inGameSendRatingPresetOptionsSchema: z.ZodType<InGameSendRatingPresetOptions> =
   z.object({
-    targetShortcuts: presetTargetShortcutsSchema,
+    targetShortcuts: inGameSendTargetShortcutsSchema,
     kda: z.boolean(),
     winRate: z.boolean(),
     avgSoloKills: z.boolean(),
@@ -40,7 +43,7 @@ export const inGameSendRatingPresetOptionsSchema: z.ZodType<InGameSendRatingPres
 
 export const inGameSendJunglePresetOptionsSchema: z.ZodType<InGameSendJunglePresetOptions> =
   z.object({
-    targetShortcuts: presetTargetShortcutsSchema,
+    targetShortcuts: inGameSendTargetShortcutsSchema,
     activityPreference: z.boolean(),
     firstClearDistribution: z.boolean(),
     earlyGank: z.boolean(),
@@ -53,7 +56,7 @@ export const inGameSendJunglePresetOptionsSchema: z.ZodType<InGameSendJunglePres
 
 export const inGameSendPremadePresetOptionsSchema: z.ZodType<InGameSendPremadePresetOptions> =
   z.object({
-    targetShortcuts: presetTargetShortcutsSchema,
+    targetShortcuts: inGameSendTargetShortcutsSchema,
     nameDisplayStrategy: presetNameDisplayStrategySchema
   })
 
@@ -73,6 +76,6 @@ export const inGameSendCustomTemplateItemsSchema: z.ZodType<InGameSendCustomTemp
       id: z.string(),
       title: z.string(),
       code: z.string(),
-      targetShortcuts: presetTargetShortcutsSchema
+      targetShortcuts: inGameSendTargetShortcutsSchema
     })
   )

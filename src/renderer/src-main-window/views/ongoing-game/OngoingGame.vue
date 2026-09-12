@@ -31,7 +31,7 @@
       </NTabPane>
 
       <NTabPane name="previous" :tab="t('ongoingGame.tabs.previous')" display-directive="show">
-        <OngoingGameProvider v-if="previousGameProvider" :value="previousGameProvider">
+        <OngoingGameProvider v-if="pgs.snapshot" :value="previousGameProvider">
           <OngoingGamePanel
             :content-width="contentWidth"
             :content-height="panelContentHeight"
@@ -94,9 +94,9 @@ const pgs = usePreviousGameStore()
 const { t } = useTranslation()
 const ongoingGame = createAkariOngoingGameProvider()
 const panelContentHeight = computed(() => Math.max(0, contentHeight.value - 40))
-const previousGameProvider = computed(() => {
-  return pgs.snapshot ? createAkariPreviousGameProvider(pgs.snapshot) : null
-})
+// provider 只创建一次，getters 实时读取 store 中的最新快照；
+// 若每次快照更新都重建 provider，子组件注入的仍是挂载时的旧对象，界面不会刷新
+const previousGameProvider = createAkariPreviousGameProvider(() => pgs.snapshot)
 
 const as = useAppCommonStore()
 

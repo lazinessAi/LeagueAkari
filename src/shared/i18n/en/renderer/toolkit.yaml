@@ -480,6 +480,36 @@ toolkit:
           saveFirst: Save current edits first
           draftOnly: Draft mode cannot send.
           unavailable: Available only in champion select, lobby, or in-game.
+      aiEvaluation:
+        label: AI Evaluation
+        shortcut: Shortcut
+        description: Generates a one-sentence AI evaluation from a player's last 50 ARAM Mayhem games. Dry run fetches the data and calls the active AI model (max 2 concurrent); sending unlocks only after every reply arrives.
+        dryRun: Dry Run
+        sendToChat: Send to Chat
+        copy: Copy
+        copied: Copied
+        promptTitle: Analysis Prompt
+        teamsCount: '{{count}} players'
+        rowReady: '{{count}} replies generated'
+        reasons:
+          noOngoingGame: No ongoing game right now
+          sgpUnavailable: SGP data source unavailable or token not ready
+          noActiveModel: No AI model configured or activated
+          running: Fetching and evaluating
+          notReady: Run the dry run first
+        lowSampleReply: 'Insufficient sample ({{count}} games); cannot produce a reliable AI evaluation'
+        playerStatus:
+          pending: Waiting
+          fetching: Fetching match history...
+          analyzing: AI evaluating...
+          noData: No ARAM Mayhem games in the last 50 games
+          error: 'Failed: {{message}}'
+        manual:
+          label: Manual Lookup
+          placeholder: 'Enter gameName#tagLine, e.g. player#12345'
+          query: Query
+          inputInvalid: Enter a summoner in gameName#tagLine format
+          notFound: Summoner not found
       customTemplate:
         label: Custom Template
         risk:

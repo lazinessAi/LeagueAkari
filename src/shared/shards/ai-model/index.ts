@@ -38,7 +38,7 @@ export interface AiModelConfig {
 }
 
 export type AiModelOperationErrorReason =
-  'invalid-config' | 'network' | 'auth' | 'not-found' | 'unknown'
+  'invalid-config' | 'no-active-config' | 'network' | 'auth' | 'not-found' | 'unknown'
 
 export interface AiModelTestSuccess {
   ok: true
@@ -60,6 +60,24 @@ export interface AiModelFetchModelsSuccess {
 }
 
 export type AiModelFetchModelsResult = AiModelFetchModelsSuccess | AiModelOperationFailure
+
+export interface AiModelChatMessage {
+  role: 'system' | 'user' | 'assistant'
+  content: string
+}
+
+export interface AiModelChatCompletionOptions {
+  temperature?: number
+  maxTokens?: number
+  timeoutMs?: number
+}
+
+export interface AiModelChatSuccess {
+  ok: true
+  reply: string
+}
+
+export type AiModelChatResult = AiModelChatSuccess | AiModelOperationFailure
 
 export function isAiModelProtocol(value: unknown): value is AiModelProtocol {
   return AI_MODEL_PROTOCOLS.includes(value as AiModelProtocol)
