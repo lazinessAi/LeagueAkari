@@ -482,6 +482,7 @@ toolkit:
           unavailable: Available only in champion select, lobby, or in-game.
       aiEvaluation:
         label: AI Evaluation
+        notice: 'Experimental feature: currently only supports ARAM Mayhem game data analysis. Other modes are not supported yet.'
         shortcut: Shortcut
         description: Generates a one-sentence AI evaluation from a player's last 50 ARAM Mayhem games. Dry run fetches the data and calls the active AI model (max 2 concurrent); sending unlocks only after every reply arrives.
         dryRun: Dry Run

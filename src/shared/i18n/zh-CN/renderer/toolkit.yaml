@@ -482,6 +482,7 @@ toolkit:
           unavailable: 仅可在英雄选择、房间或游戏内使用
       aiEvaluation:
         label: AI 评价
+        notice: 实验功能：目前仅支持海克斯大乱斗对局的数据分析，其他模式暂不支持。
         shortcut: 快捷键
         description: 基于玩家近 50 场海克斯大乱斗数据生成 AI 一句话评价。试运行会拉取数据并调用当前激活的 AI 模型（并发上限 2），全部回复收齐后才能发送。
         dryRun: 试运行

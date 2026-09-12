@@ -1,6 +1,13 @@
 <template>
   <div class="flex flex-col pt-2">
-    <div class="text-xs leading-relaxed text-black/60 dark:text-white/70">
+    <NAlert type="warning" :show-icon="false">
+      <div class="flex items-center gap-2 text-xs leading-relaxed">
+        <NIcon class="shrink-0"><WarningIcon /></NIcon>
+        <span>{{ t('notice') }}</span>
+      </div>
+    </NAlert>
+
+    <div class="mt-2 text-xs leading-relaxed text-black/60 dark:text-white/70">
       {{ t('description') }}
     </div>
 
@@ -293,9 +300,14 @@ import { useStreamerModeMaskedText } from '@renderer-shared/composables/useStrea
 import { getInGameSendAiEvaluationShortcutTargetId } from '@shared/shards/in-game-send'
 import ShortcutSelector from '@main-window/components/ShortcutSelector.vue'
 import NameDisplayStrategySelector from '../widgets/NameDisplayStrategySelector.vue'
-import { DocumentText24Regular as DryRunIcon, Send24Filled as SendIcon } from '@vicons/fluent'
+import {
+  DocumentText24Regular as DryRunIcon,
+  Send24Filled as SendIcon,
+  Warning24Regular as WarningIcon
+} from '@vicons/fluent'
 import { useTranslation } from 'i18next-vue'
 import {
+  NAlert,
   NButton,
   NCheckbox,
   NCollapse,
