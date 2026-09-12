@@ -62,7 +62,7 @@ export interface AramMayhemReport {
   smurf: Record<string, any>
 }
 
-const BUCKETS = ['carry', 'tank', 'support', 'other'] as const
+const BUCKETS = ['carry', 'fighter', 'frontline', 'support', 'other'] as const
 
 function round(v: number, digits = 1): number {
   const f = 10 ** digits
@@ -169,16 +169,20 @@ export function buildAramMayhemReport(args: {
 
     const championInfo = champions[me.championId] ?? {}
     const roles = championInfo.roles ?? []
-    const bucket = roles.includes('tank')
-      ? 'tank'
-      : roles.includes('support')
-        ? 'support'
-        : roles.includes('marksman') ||
-            roles.includes('mage') ||
-            roles.includes('assassin') ||
-            roles.includes('fighter')
-          ? 'carry'
-          : 'other'
+    // 战士：战士+坦克双定位（输出承伤兼备，以输出为主）；前排：纯坦克定位（基本仅有承伤）
+    const bucket =
+      roles.includes('tank') && roles.includes('fighter')
+        ? 'fighter'
+        : roles.includes('tank')
+          ? 'frontline'
+          : roles.includes('support')
+            ? 'support'
+            : roles.includes('marksman') ||
+                roles.includes('mage') ||
+                roles.includes('assassin') ||
+                roles.includes('fighter')
+              ? 'carry'
+              : 'other'
 
     const augmentIds = [1, 2, 3, 4, 5, 6]
       .map((i) => stat(me, `playerAugment${i}`))
