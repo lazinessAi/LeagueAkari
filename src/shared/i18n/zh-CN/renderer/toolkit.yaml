@@ -489,7 +489,6 @@ toolkit:
         sendToChat: 发送到聊天
         copy: 复制
         copied: 已复制
-        promptTitle: 分析提示词
         teamsCount: '{{count}} 名玩家'
         rowReady: 已生成 {{count}} 条评价
         reasons:

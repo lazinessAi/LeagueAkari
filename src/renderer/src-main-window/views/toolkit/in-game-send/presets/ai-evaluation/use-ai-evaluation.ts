@@ -9,10 +9,15 @@ import { useLeagueClientStore } from '@renderer-shared/shards/league-client/stor
 import { useOngoingGameStore } from '@renderer-shared/shards/ongoing-game/store'
 import { SgpRenderer } from '@renderer-shared/shards/sgp'
 import { useSgpStore } from '@renderer-shared/shards/sgp/store'
-import type { InGameSendPresetNameDisplayStrategy } from '@shared/shards/in-game-send'
+import type {
+  InGameSendPresetNameDisplayStrategy,
+  InGameSendPresetTargetShortcuts
+} from '@shared/shards/in-game-send'
 import { useTranslation } from 'i18next-vue'
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 
+import { createShortcutTargetIds } from '../data/shared'
+import type { GamePhase, PresetTargetId, PreviewedLines } from '../types'
 import { buildAramMayhemReport, buildEvaluationText } from './aggregate'
 import {
   AI_EVALUATION_CHAT_LINE_MAX_LENGTH,
@@ -21,23 +26,39 @@ import {
 } from './constants'
 import { fetchAramMayhemGameSummaries } from './fetch-player-games'
 
-export type AiEvaluationTargetId = 'friendly' | 'enemy' | 'all'
-
-export type AiEvaluationPlayerStatus =
-  'pending' | 'fetching' | 'analyzing' | 'done' | 'no-data' | 'error'
+export type AiEvaluationTargetId = PresetTargetId
 
 export interface AiEvaluationPlayerEntry {
   puuid: string
   name: string
   displayName: string
-  status: AiEvaluationPlayerStatus
+  status: 'pending' | 'fetching' | 'analyzing' | 'done' | 'no-data' | 'error'
   reply: string
   errorMessage: string
 }
 
-export interface AiEvaluationRowState {
-  status: 'idle' | 'running' | 'ready'
-  evaluations: AiEvaluationPlayerEntry[]
+const SENDABLE_PHASES: GamePhase[] = ['lobby', 'champ-select', 'in-game']
+
+function getAiEvaluationShortcutTargetId(target: PresetTargetId) {
+  return `in-game-send-main/ai-evaluation/${target}`
+}
+
+function parseRiotId(input: string): { gameName: string; tagLine: string } | null {
+  const trimmed = input.trim()
+  const hashIndex = trimmed.indexOf('#')
+
+  if (hashIndex <= 0 || hashIndex === trimmed.length - 1) {
+    return null
+  }
+
+  const gameName = trimmed.slice(0, hashIndex).trim()
+  const tagLine = trimmed.slice(hashIndex + 1).trim()
+
+  if (!gameName || !tagLine) {
+    return null
+  }
+
+  return { gameName, tagLine }
 }
 
 /** 按句切分超长文本，保证每条不超过游戏聊天的长度上限 */
@@ -68,59 +89,36 @@ function splitLongLine(text: string, maxLength: number): string[] {
   return lines.length ? lines : [text]
 }
 
-/** 每名玩家一条消息（玩家名前缀），超长按句再切 */
-function buildEvaluationChatLines(evaluations: AiEvaluationPlayerEntry[]): string[] {
-  const lines: string[] = []
+function splitLongLines(lines: string[]): string[] {
+  const result: string[] = []
 
-  for (const evaluation of evaluations) {
-    if (evaluation.status !== 'done' || !evaluation.reply) {
-      continue
-    }
-
-    for (const paragraph of evaluation.reply
-      .split(/\n+/)
-      .map((s) => s.trim())
-      .filter(Boolean)) {
-      const prefixed = `${evaluation.displayName || evaluation.name}：${paragraph}`
-      lines.push(...splitLongLine(prefixed, AI_EVALUATION_CHAT_LINE_MAX_LENGTH))
-    }
+  for (const line of lines) {
+    result.push(...splitLongLine(line, AI_EVALUATION_CHAT_LINE_MAX_LENGTH))
   }
 
-  return lines
+  return result
 }
 
-function parseRiotId(input: string): { gameName: string; tagLine: string } | null {
-  const trimmed = input.trim()
-  const hashIndex = trimmed.indexOf('#')
-
-  if (hashIndex <= 0 || hashIndex === trimmed.length - 1) {
-    return null
-  }
-
-  const gameName = trimmed.slice(0, hashIndex).trim()
-  const tagLine = trimmed.slice(hashIndex + 1).trim()
-
-  if (!gameName || !tagLine) {
-    return null
-  }
-
-  return { gameName, tagLine }
-}
-
-async function runWithConcurrency(tasks: (() => Promise<void>)[], limit: number) {
+async function runWithConcurrency<T>(tasks: (() => Promise<T>)[], limit: number): Promise<T[]> {
   const queue = [...tasks]
+  const results: T[] = []
   const workers = Array.from({ length: Math.min(limit, queue.length) }, async () => {
     while (queue.length) {
       const task = queue.shift()
       if (task) {
-        await task()
+        results.push(await task())
       }
     }
   })
 
   await Promise.all(workers)
+  return results
 }
 
+/**
+ * 海斗评价的作用域适配器：产出与预设 tab 相同的 PresetScopeContext，
+ * 从而直接复用 PresetSendControls / PreviewPanel 的按钮、样式与交互。
+ */
 export function useAiEvaluation() {
   const { t } = useTranslation('renderer', {
     keyPrefix: 'toolkit.inGameSend.presets.aiEvaluation'
@@ -129,29 +127,12 @@ export function useAiEvaluation() {
   const ogs = useOngoingGameStore()
   const lcStore = useLeagueClientStore()
   const sgpStore = useSgpStore()
+  const igsStore = useInGameSendStore()
   const extraAssetsStore = useExtraAssetsStore()
   const sgp = useInstance(SgpRenderer)
   const igs = useInstance(InGameSendRenderer)
-  const igsStore = useInGameSendStore()
   const ipc = useInstance(AkariIpcRenderer)
   const { searchSummonerByAlias } = useSummonerFetch()
-
-  const rows = reactive<Record<AiEvaluationTargetId, AiEvaluationRowState>>({
-    friendly: { status: 'idle', evaluations: [] },
-    enemy: { status: 'idle', evaluations: [] },
-    all: { status: 'idle', evaluations: [] }
-  })
-
-  // 对局玩家勾选状态（puuid -> 是否参与评价/发送，默认全选）
-  const selection = reactive<Record<string, boolean>>({})
-
-  const manual = reactive({
-    input: '',
-    /** 手动模块发送到聊天时的语义目标（发送本身走当前阶段聊天） */
-    sendTarget: 'friendly' as AiEvaluationTargetId,
-    entry: null as AiEvaluationPlayerEntry | null,
-    errorMessage: ''
-  })
 
   const sgpReady = computed(
     () =>
@@ -160,158 +141,9 @@ export function useAiEvaluation() {
       !!sgpStore.availability.sgpServerId
   )
 
-  // 这些阶段下 ongoing-game 已有成员数据（房间为 LOBBY 桶，选人/对局为 TEAM-100/200）
-  const PLAYER_READY_PHASES = ['lobby', 'draft', 'champ-select', 'in-game']
+  // ===== 对局玩家勾选 =====
+  const selection = reactive<Record<string, boolean>>({})
 
-  const ongoingGameReady = computed(() =>
-    (PLAYER_READY_PHASES as string[]).includes(ogs.queryStage.phase)
-  )
-
-  const anyRowRunning = computed(() => Object.values(rows).some((row) => row.status === 'running'))
-
-  const manualRunning = computed(
-    () => manual.entry?.status === 'fetching' || manual.entry?.status === 'analyzing'
-  )
-
-  function commonDisabledReason(): string {
-    if (!sgpReady.value) {
-      return t('reasons.sgpUnavailable')
-    }
-
-    return ''
-  }
-
-  function getTargetDisabledReason(target: AiEvaluationTargetId): string {
-    if (!ongoingGameReady.value) {
-      return t('reasons.noOngoingGame')
-    }
-
-    if (getTargetPlayers(target).length === 0) {
-      return t('reasons.noSelectedPlayers')
-    }
-
-    if (rows[target].status === 'running') {
-      return t('reasons.running')
-    }
-
-    if (target !== 'friendly' && anyRowRunning.value) {
-      return t('reasons.running')
-    }
-
-    return commonDisabledReason()
-  }
-
-  function getTargetSendDisabledReason(target: AiEvaluationTargetId): string {
-    if (rows[target].status === 'running') {
-      return t('reasons.running')
-    }
-
-    if (rows[target].status !== 'ready') {
-      return t('reasons.notReady')
-    }
-
-    return ''
-  }
-
-  function formatPlayerName(puuid: string): string {
-    const summoner = ogs.summoner[puuid]
-
-    if (summoner?.gameName) {
-      return summoner.tagLine ? `${summoner.gameName}#${summoner.tagLine}` : summoner.gameName
-    }
-
-    return summoner?.displayName || puuid.slice(0, 8)
-  }
-
-  function getTargetPlayers(
-    target: AiEvaluationTargetId
-  ): { puuid: string; name: string; displayName: string }[] {
-    const ownPuuid = lcStore.summoner.me?.puuid
-    const bucketEntries = Object.entries(ogs.teams).filter(([, members]) => members.length > 0)
-
-    const ownBucket = bucketEntries.find(([, members]) => ownPuuid && members.includes(ownPuuid))
-
-    if (!ownBucket) {
-      return []
-    }
-
-    const [ownBucketId, ownBucketMembers] = ownBucket
-    // LOBBY / TEAM-ALL 是"全员同队"桶，没有敌方
-    const isGlobalBucket = (id: string) => id === 'LOBBY' || id === 'TEAM-ALL'
-
-    let puuids: string[]
-    if (target === 'friendly') {
-      puuids = ownBucketMembers
-    } else if (target === 'enemy') {
-      puuids = isGlobalBucket(ownBucketId)
-        ? []
-        : bucketEntries
-            .filter(([id]) => id !== ownBucketId && !isGlobalBucket(id))
-            .flatMap(([, members]) => members)
-    } else {
-      const seen = new Set<string>()
-      puuids = bucketEntries
-        .flatMap(([, members]) => members)
-        .filter((puuid) => {
-          if (seen.has(puuid)) {
-            return false
-          }
-          seen.add(puuid)
-          return true
-        })
-    }
-    const resolved = puuids
-      .filter(Boolean)
-      .filter((puuid) => selection[puuid] !== false)
-      .map((puuid) => {
-        const view = allGamePlayers.value.find((p) => p.puuid === puuid)
-        return {
-          puuid,
-          name: formatPlayerName(puuid),
-          championId: view?.championId ?? null
-        }
-      })
-
-    // 名字展示策略：存在重复英雄时 preferChampionName 回退为玩家名
-    const strategy = igsStore.settings.aiEvaluationNameDisplayStrategy
-    const championCounts = new Map<number, number>()
-    if (strategy !== 'preferName') {
-      for (const player of resolved) {
-        if (player.championId) {
-          championCounts.set(player.championId, (championCounts.get(player.championId) ?? 0) + 1)
-        }
-      }
-    }
-
-    return resolved.map((player) => ({
-      puuid: player.puuid,
-      name: player.name,
-      displayName: computeDisplayName(player.name, player.championId, strategy, championCounts)
-    }))
-  }
-
-  function computeDisplayName(
-    playerName: string,
-    championId: number | null,
-    strategy: InGameSendPresetNameDisplayStrategy,
-    duplicateChampionIds: Map<number, number>
-  ): string {
-    const championName = championId ? lcStore.gameData.champions[championId]?.name : undefined
-
-    if (championId && championName && (duplicateChampionIds.get(championId) ?? 0) <= 1) {
-      if (strategy === 'championNameWithName') {
-        return `${championName}（${playerName}）`
-      }
-
-      if (strategy === 'preferChampionName') {
-        return championName
-      }
-    }
-
-    return playerName
-  }
-
-  /** 对局内全部玩家的展示视图（勾选面板用） */
   const allGamePlayers = computed(() => {
     const ownPuuid = lcStore.summoner.me?.puuid
     const ownBucket = Object.entries(ogs.teams).find(
@@ -353,7 +185,6 @@ export function useAiEvaluation() {
     return players
   })
 
-  // 新出现的玩家默认勾选
   watch(
     allGamePlayers,
     (players) => {
@@ -384,7 +215,99 @@ export function useAiEvaluation() {
     }
   }
 
-  async function evaluatePlayer(entry: AiEvaluationPlayerEntry, playerLevel?: number | null) {
+  function formatPlayerName(puuid: string): string {
+    const summoner = ogs.summoner[puuid]
+
+    if (summoner?.gameName) {
+      return summoner.tagLine ? `${summoner.gameName}#${summoner.tagLine}` : summoner.gameName
+    }
+
+    return summoner?.displayName || puuid.slice(0, 8)
+  }
+
+  // ===== PresetScopeContext 适配 =====
+  const gamePhase = computed<GamePhase>(() => {
+    const { phase } = ogs.queryStage
+
+    if (phase === 'lobby' || phase === 'champ-select' || phase === 'in-game' || phase === 'draft') {
+      return phase
+    }
+
+    return 'none'
+  })
+
+  const canSend = computed(() => SENDABLE_PHASES.includes(gamePhase.value))
+
+  const shortcutTargetIds = createShortcutTargetIds(getAiEvaluationShortcutTargetId)
+  const shortcuts = computed<InGameSendPresetTargetShortcuts>(() => ({
+    ...igsStore.settings.aiEvaluationTargetShortcuts
+  }))
+
+  async function setShortcut(targetId: PresetTargetId, shortcutId: string | null) {
+    return igs.setAiEvaluationTargetShortcut(targetId, shortcutId)
+  }
+
+  // ===== 评价执行 =====
+  const running = ref(false)
+  const evaluations = reactive<Record<AiEvaluationTargetId, AiEvaluationPlayerEntry[]>>({
+    friendly: [],
+    enemy: [],
+    all: []
+  })
+  const generatedLines = reactive<Record<AiEvaluationTargetId, PreviewedLines | null>>({
+    friendly: null,
+    enemy: null,
+    all: null
+  })
+  const previewedLinesRaw = ref<PreviewedLines | null>(null)
+  const previewedLines = computed(() => previewedLinesRaw.value)
+
+  function getTargetPlayers(target: AiEvaluationTargetId): { puuid: string; name: string }[] {
+    const ownPuuid = lcStore.summoner.me?.puuid
+    const bucketEntries = Object.entries(ogs.teams).filter(([, members]) => members.length > 0)
+
+    const ownBucket = bucketEntries.find(([, members]) => ownPuuid && members.includes(ownPuuid))
+
+    if (!ownBucket) {
+      return []
+    }
+
+    const [ownBucketId, ownBucketMembers] = ownBucket
+    // LOBBY / TEAM-ALL 是"全员同队"桶，没有敌方
+    const isGlobalBucket = (id: string) => id === 'LOBBY' || id === 'TEAM-ALL'
+
+    let puuids: string[]
+    if (target === 'friendly') {
+      puuids = ownBucketMembers
+    } else if (target === 'enemy') {
+      puuids = isGlobalBucket(ownBucketId)
+        ? []
+        : bucketEntries
+            .filter(([id]) => id !== ownBucketId && !isGlobalBucket(id))
+            .flatMap(([, members]) => members)
+    } else {
+      const seen = new Set<string>()
+      puuids = bucketEntries
+        .flatMap(([, members]) => members)
+        .filter((puuid) => {
+          if (seen.has(puuid)) {
+            return false
+          }
+          seen.add(puuid)
+          return true
+        })
+    }
+
+    return puuids
+      .filter(Boolean)
+      .filter((puuid) => selection[puuid] !== false)
+      .map((puuid) => ({ puuid, name: formatPlayerName(puuid) }))
+  }
+
+  async function evaluatePlayer(
+    entry: AiEvaluationPlayerEntry,
+    playerLevel?: number | null
+  ): Promise<string> {
     entry.status = 'fetching'
 
     try {
@@ -396,7 +319,7 @@ export function useAiEvaluation() {
 
       if (!games.length) {
         entry.status = 'no-data'
-        return
+        return `${entry.displayName || entry.name}：${t('playerStatus.noData')}`
       }
 
       entry.status = 'analyzing'
@@ -407,7 +330,7 @@ export function useAiEvaluation() {
       }
 
       const report = buildAramMayhemReport({
-        playerName: entry.name,
+        playerName: entry.displayName || entry.name,
         playerPuuid: entry.puuid,
         playerLevel,
         games,
@@ -418,73 +341,93 @@ export function useAiEvaluation() {
 
       if (!report) {
         entry.status = 'no-data'
-        return
+        return `${entry.displayName || entry.name}：${t('playerStatus.noData')}`
       }
 
-      // 极小样本下模型输出不可控，不发起 AI 调用，直接给确定性文案
       if (report.sampleSize < AI_EVALUATION_MIN_SAMPLE) {
-        entry.reply = t('lowSampleReply', { count: report.sampleSize })
         entry.status = 'done'
-        return
+        return `${entry.displayName || entry.name}：${t('lowSampleReply', {
+          count: report.sampleSize
+        })}`
       }
 
       entry.reply = buildEvaluationText(report)
       entry.status = 'done'
+      return `${entry.displayName || entry.name}：${entry.reply}`
     } catch (error) {
       entry.status = 'error'
       entry.errorMessage = error instanceof Error ? error.message : String(error)
+      return `${entry.displayName || entry.name}：${t('playerStatus.error', {
+        message: entry.errorMessage
+      })}`
     }
   }
 
-  async function runTargetEvaluation(target: AiEvaluationTargetId) {
-    const row = rows[target]
-
-    if (row.status === 'running' || getTargetDisabledReason(target)) {
+  async function dryRun(target: AiEvaluationTargetId): Promise<void> {
+    if (running.value || !sgpReady.value) {
       return
     }
 
     const players = getTargetPlayers(target)
-    if (!players.length) {
-      return
-    }
-
-    row.evaluations = players.map((player) => ({
-      puuid: player.puuid,
-      name: player.name,
-      displayName: player.displayName,
+    const entries: AiEvaluationPlayerEntry[] = players.map((player) => ({
+      ...player,
+      displayName: player.name,
       status: 'pending',
       reply: '',
       errorMessage: ''
     }))
-    row.status = 'running'
+    evaluations[target] = entries
 
-    await runWithConcurrency(
-      row.evaluations.map((entry) => async () => {
-        await evaluatePlayer(entry, ogs.summoner[entry.puuid]?.summonerLevel ?? null)
-      }),
-      AI_EVALUATION_CONCURRENCY
-    )
+    running.value = true
+    try {
+      await runWithConcurrency(
+        entries.map(
+          (entry) => () => evaluatePlayer(entry, ogs.summoner[entry.puuid]?.summonerLevel ?? null)
+        ),
+        AI_EVALUATION_CONCURRENCY
+      )
 
-    row.status = 'ready'
+      const lines = entries.map((entry) => `${entry.displayName || entry.name}：${entry.reply}`)
+      generatedLines[target] = { targetId: target, createdAt: Date.now(), lines }
+      previewedLinesRaw.value = { targetId: target, createdAt: Date.now(), lines }
+    } finally {
+      running.value = false
+    }
   }
 
-  function sendTargetReplies(target: AiEvaluationTargetId) {
-    const row = rows[target]
-
-    if (row.status !== 'ready' || getTargetSendDisabledReason(target)) {
-      return Promise.resolve(false)
+  async function send(target: AiEvaluationTargetId): Promise<boolean> {
+    if (running.value || !canSend.value) {
+      return false
     }
 
-    const lines = buildEvaluationChatLines(row.evaluations)
+    // 未试运行的目标先生成再发送
+    if (!generatedLines[target]) {
+      await dryRun(target)
+    }
+
+    const lines = generatedLines[target]?.lines ?? []
     if (!lines.length) {
-      return Promise.resolve(false)
+      return false
     }
 
-    return igs.sendLines(lines)
+    return igs.sendLines(splitLongLines(lines))
   }
+
+  function closePreview() {
+    previewedLinesRaw.value = null
+  }
+
+  // ===== 手动查询 =====
+  const manual = reactive({
+    input: '',
+    sendTarget: 'friendly' as AiEvaluationTargetId,
+    entry: null as AiEvaluationPlayerEntry | null,
+    running: false,
+    errorMessage: ''
+  })
 
   async function runManualEvaluation() {
-    if (manualRunning.value) {
+    if (manual.running) {
       return
     }
 
@@ -503,84 +446,181 @@ export function useAiEvaluation() {
       reply: '',
       errorMessage: ''
     }
+    manual.running = true
 
-    let summoner: NonNullable<Awaited<ReturnType<typeof searchSummonerByAlias>>> | null = null
     try {
-      summoner = await searchSummonerByAlias(parsed.gameName, parsed.tagLine, 'lcu')
-    } catch {
-      summoner = null
-    }
+      let summoner: { puuid: string; gameName: string; tagLine: string; level: number } | null =
+        null
+      try {
+        const lcuSummoner = await searchSummonerByAlias(parsed.gameName, parsed.tagLine, 'lcu')
+        summoner = lcuSummoner
+          ? {
+              puuid: lcuSummoner.puuid,
+              gameName: lcuSummoner.gameName,
+              tagLine: lcuSummoner.tagLine,
+              level: lcuSummoner.level
+            }
+          : null
+      } catch {
+        summoner = null
+      }
 
-    if (!summoner && sgpReady.value) {
-      summoner = await searchSummonerByAlias(
-        parsed.gameName,
-        parsed.tagLine,
-        'sgp',
-        sgpStore.availability.sgpServerId
-      ).catch(() => null)
-    }
+      if (!summoner && sgpReady.value) {
+        const sgpSummoner = await searchSummonerByAlias(
+          parsed.gameName,
+          parsed.tagLine,
+          'sgp',
+          sgpStore.availability.sgpServerId
+        ).catch(() => null)
+        summoner = sgpSummoner
+          ? {
+              puuid: sgpSummoner.puuid,
+              gameName: sgpSummoner.gameName,
+              tagLine: sgpSummoner.tagLine,
+              level: sgpSummoner.level
+            }
+          : null
+      }
 
-    if (!summoner) {
+      if (!summoner) {
+        manual.entry.status = 'error'
+        manual.entry.errorMessage = t('manual.notFound')
+        return
+      }
+
+      manual.entry.puuid = summoner.puuid
+      manual.entry.displayName = summoner.gameName
+        ? summoner.tagLine
+          ? `${summoner.gameName}#${summoner.tagLine}`
+          : summoner.gameName
+        : manual.entry.name
+
+      const games = await fetchAramMayhemGameSummaries(
+        sgp,
+        sgpStore.availability.sgpServerId,
+        summoner.puuid
+      )
+      manual.entry.status = 'analyzing'
+
+      if (!games.length) {
+        manual.entry.status = 'no-data'
+        return
+      }
+
+      const itemNames: Record<number, string> = {}
+      for (const [id, item] of Object.entries(lcStore.gameData.items)) {
+        itemNames[Number(id)] = item.name
+      }
+
+      const report = buildAramMayhemReport({
+        playerName: manual.entry.displayName,
+        playerPuuid: summoner.puuid,
+        playerLevel: summoner.level ?? null,
+        games,
+        champions: lcStore.gameData.champions,
+        kiwiAugments: extraAssetsStore.kiwiAugmentsMap,
+        itemNames
+      })
+
+      if (!report) {
+        manual.entry.status = 'no-data'
+        return
+      }
+
+      if (report.sampleSize < AI_EVALUATION_MIN_SAMPLE) {
+        manual.entry.reply = t('lowSampleReply', { count: report.sampleSize })
+        manual.entry.status = 'done'
+        return
+      }
+
+      manual.entry.reply = buildEvaluationText(report)
+      manual.entry.status = 'done'
+    } catch (error) {
       manual.entry.status = 'error'
-      manual.entry.errorMessage = t('manual.notFound')
-      return
+      manual.entry.errorMessage = error instanceof Error ? error.message : String(error)
+    } finally {
+      manual.running = false
     }
-
-    manual.entry.puuid = summoner.puuid
-    manual.entry.displayName = manual.entry.name
-    manual.entry.name = summoner.gameName
-      ? summoner.tagLine
-        ? `${summoner.gameName}#${summoner.tagLine}`
-        : summoner.gameName
-      : manual.entry.name
-
-    await evaluatePlayer(manual.entry, summoner.level ?? null)
   }
 
-  function sendManualReply() {
+  async function sendManualReply() {
     const entry = manual.entry
 
     if (!entry || entry.status !== 'done' || !entry.reply) {
-      return Promise.resolve(false)
+      return false
     }
 
-    const lines = buildEvaluationChatLines([entry])
+    const lines = splitLongLines([`${entry.displayName || entry.name}：${entry.reply}`])
     if (!lines.length) {
-      return Promise.resolve(false)
+      return false
     }
 
     return igs.sendLines(lines)
   }
 
-  // 主进程快捷键按下 -> 渲染端执行该目标的发送（回复已就绪时）
+  // ===== 快捷键 =====
   ipc.onEventVue(
     IN_GAME_SEND_MAIN_NAMESPACE,
     'ai-evaluation-shortcut',
     (target: AiEvaluationTargetId) => {
-      void sendTargetReplies(target)
+      void send(target)
     }
   )
 
   return {
-    rows,
-    manual,
+    // PresetScopeContext 兼容成员
+    shortcutTargetIds,
+    shortcuts,
+    gamePhase,
+    canSend,
+    previewedLines,
+    setShortcut,
+    send,
+    dryRun,
+    closePreview,
+
+    // 海斗评价扩展
+    running,
+    evaluations,
+    generatedLines,
     selection,
     allGamePlayers,
+    getTargetPlayers,
     selectedGamePlayerCount,
     isPlayerSelected,
     setPlayerSelected,
     setAllPlayersSelected,
     sgpReady,
-    commonDisabledReason,
-    ongoingGameReady,
-    anyRowRunning,
-    manualRunning,
-    getTargetDisabledReason,
-    getTargetSendDisabledReason,
-    getTargetPlayers,
-    runTargetEvaluation,
-    sendTargetReplies,
+    manual,
+    manualRunning: computed(() => manual.running),
     runManualEvaluation,
-    sendManualReply
+    sendManualReply,
+    commonDisabledReason
   }
+
+  function commonDisabledReason(): string {
+    if (running.value) {
+      return t('reasons.running')
+    }
+
+    if (!sgpReady.value) {
+      return t('reasons.sgpUnavailable')
+    }
+
+    return ''
+  }
+}
+
+/** 名字展示策略设置（供面板绑定） */
+export function useAiEvaluationNameDisplay() {
+  const igsStore = useInGameSendStore()
+  const igs = useInstance(InGameSendRenderer)
+
+  const strategy = computed(() => igsStore.settings.aiEvaluationNameDisplayStrategy)
+
+  function setStrategy(value: InGameSendPresetNameDisplayStrategy) {
+    return igs.setAiEvaluationNameDisplayStrategy(value)
+  }
+
+  return { strategy, setStrategy }
 }

@@ -489,7 +489,6 @@ toolkit:
         sendToChat: Send to Chat
         copy: Copy
         copied: Copied
-        promptTitle: Analysis Prompt
         teamsCount: '{{count}} players'
         rowReady: '{{count}} replies generated'
         reasons:

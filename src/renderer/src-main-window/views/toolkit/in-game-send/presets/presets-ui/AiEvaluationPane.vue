@@ -11,77 +11,83 @@
       {{ t('description') }}
     </div>
 
-    <SettingsRow
-      v-for="target of targets"
-      :key="target.id"
-      :label-width="160"
-      :label-description="targetDescription(target)"
-      align="center"
-      no-x-padding
-    >
-      <template #label>
-        <div class="flex items-center gap-1.5">
-          <NIcon><component :is="target.icon" /></NIcon>
-          <span>{{ target.label }}</span>
+    <!-- 与预设 tab 同构的目标行 / 发送 / 试运行 -->
+    <div class="pt-2">
+      <SettingsRow
+        v-for="target of targets"
+        :key="target.id"
+        :label-width="160"
+        :label-description="targetDescription(target)"
+        align="center"
+        no-x-padding
+      >
+        <template #label>
+          <div class="flex items-center gap-1.5">
+            <NIcon><component :is="target.icon" /></NIcon>
+            <span>{{ target.label }}</span>
+          </div>
+        </template>
+
+        <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1.5">
+            <span class="text-xs text-black/60 dark:text-white/60">{{ t('shortcut') }}</span>
+            <ShortcutSelector
+              :shortcut-id="shortcuts[target.id]"
+              :target-id="shortcutTargetIds[target.id]"
+              @update:shortcut-id="(shortcutId) => setShortcut(target.id, shortcutId)"
+            />
+          </div>
+          <NDivider vertical />
+          <NPopover :disabled="!sendDisabledReason()" trigger="hover">
+            <template #trigger>
+              <NButton
+                size="small"
+                :disabled="sendDisabledReason() !== ''"
+                @click="handleSendTarget(target.id)"
+              >
+                <template #icon>
+                  <NIcon><SendIcon /></NIcon>
+                </template>
+                {{ sendButtonText }}
+              </NButton>
+            </template>
+            {{ sendDisabledReason() }}
+          </NPopover>
+          <NPopover :disabled="!dryRunDisabledReason()" trigger="hover">
+            <template #trigger>
+              <NButton
+                size="small"
+                secondary
+                :loading="running"
+                :disabled="!!dryRunDisabledReason()"
+                @click="dryRun(target.id)"
+              >
+                <template #icon>
+                  <NIcon><DryRunIcon /></NIcon>
+                </template>
+                {{ t('dryRun') }}
+              </NButton>
+            </template>
+            {{ dryRunDisabledReason() }}
+          </NPopover>
         </div>
-      </template>
+      </SettingsRow>
 
-      <div class="flex items-center gap-2">
-        <div class="flex items-center gap-1.5">
-          <span class="text-xs text-black/60 dark:text-white/60">{{ t('shortcut') }}</span>
-          <ShortcutSelector
-            :shortcut-id="igsStore.settings.aiEvaluationTargetShortcuts[target.id]"
-            :target-id="getShortcutTargetId(target.id)"
-            @update:shortcut-id="(id) => setShortcut(target.id, id)"
-          />
-        </div>
-        <NDivider vertical />
-        <NPopover :disabled="!getTargetSendDisabledReason(target.id)" trigger="hover">
-          <template #trigger>
-            <NButton
-              size="small"
-              :disabled="getTargetSendDisabledReason(target.id) !== ''"
-              @click="handleSendTarget(target.id)"
-            >
-              <template #icon>
-                <NIcon><SendIcon /></NIcon>
-              </template>
-              {{ t('sendToChat') }}
-            </NButton>
-          </template>
-          {{ getTargetSendDisabledReason(target.id) }}
-        </NPopover>
+      <!-- Keep the final row divider when content follows this group. -->
+      <span hidden aria-hidden="true"></span>
+    </div>
 
-        <NPopover :disabled="!targetDryRunDisabledReason(target.id)" trigger="hover">
-          <template #trigger>
-            <NButton
-              size="small"
-              secondary
-              :loading="rows[target.id].status === 'running'"
-              :disabled="!!targetDryRunDisabledReason(target.id)"
-              @click="runTargetEvaluation(target.id)"
-            >
-              <template #icon>
-                <NIcon><DryRunIcon /></NIcon>
-              </template>
-              {{ t('dryRun') }}
-            </NButton>
-          </template>
-          {{ targetDryRunDisabledReason(target.id) }}
-        </NPopover>
-      </div>
-    </SettingsRow>
+    <!-- 生成结果预览 -->
+    <PreviewPanel :preset="scope" constrained />
 
-    <!-- Keep the final row divider when content follows this group. -->
-    <span hidden aria-hidden="true"></span>
-
+    <!-- 名字展示 -->
     <NameDisplayStrategySelector
       :value="igsStore.settings.aiEvaluationNameDisplayStrategy"
       @update:value="(strategy) => igs.setAiEvaluationNameDisplayStrategy(strategy)"
     />
 
     <!-- 发送的目标：按玩家勾选 -->
-    <div v-if="allGamePlayers.length" class="mt-1 flex flex-col gap-2">
+    <div v-if="allGamePlayers.length" class="flex flex-col gap-2">
       <div class="flex items-center justify-between">
         <div class="text-xs font-semibold text-black/70 dark:text-white/70">
           {{
@@ -112,10 +118,7 @@
               <div
                 class="size-2.5 shrink-0 rounded-full border border-white/20 bg-current opacity-40"
               />
-              <span>{{ tTeams(group.isOwnTeam ? 'friendly' : 'enemy') }}</span>
-              <span v-if="phaseContextLabel" class="font-normal text-black/45 dark:text-white/45">
-                · {{ phaseContextLabel }}
-              </span>
+              <span>{{ group.label }}</span>
               <span class="font-normal text-black/45 dark:text-white/45">
                 ({{ group.selectedCount }}/{{ group.members.length }})
               </span>
@@ -178,45 +181,6 @@
       </div>
     </div>
 
-    <!-- 评价结果 -->
-    <div class="mt-3 flex flex-col gap-2">
-      <template v-for="target of targets" :key="target.id">
-        <div v-if="rows[target.id].evaluations.length" class="flex flex-col gap-1.5">
-          <div class="text-xs font-bold text-black/70 dark:text-white/70">
-            {{ target.label }}
-            <span v-if="rows[target.id].status === 'ready'" class="ml-1 font-normal">
-              {{ t('rowReady', { count: doneCount(target.id) }) }}
-            </span>
-          </div>
-
-          <div
-            v-for="evaluation of rows[target.id].evaluations"
-            :key="evaluation.puuid"
-            class="rounded border border-black/10 bg-black/5 px-3 py-2 text-xs leading-relaxed dark:border-white/10 dark:bg-white/5"
-          >
-            <span class="font-bold">{{
-              maskedName(evaluation.displayName || evaluation.name)
-            }}</span>
-            <span v-if="evaluation.status === 'done'" class="ml-2">{{ evaluation.reply }}</span>
-            <span v-else class="ml-2 text-black/50 dark:text-white/50">
-              {{ playerStatusText(evaluation) }}
-            </span>
-          </div>
-        </div>
-      </template>
-    </div>
-
-    <!-- 分析提示词（只读展示） -->
-    <NCollapse class="mt-3">
-      <NCollapseItem :title="t('promptTitle')">
-        <div
-          class="max-h-60 overflow-auto rounded bg-black/5 p-2 text-xs leading-relaxed whitespace-pre-wrap dark:bg-white/5"
-        >
-          {{ AI_EVALUATION_SYSTEM_PROMPT }}
-        </div>
-      </NCollapseItem>
-    </NCollapse>
-
     <!-- 手动查询 -->
     <SettingsRow class="mt-3" :label-width="180" align="center" no-x-padding control-full-line>
       <template #label>
@@ -260,7 +224,7 @@
       <span class="font-bold">{{ maskedName(manual.entry.displayName || manual.entry.name) }}</span>
       <div v-if="manual.entry.status === 'done'" class="mt-1">{{ manual.entry.reply }}</div>
       <div v-else class="mt-1 text-black/50 dark:text-white/50">
-        {{ playerStatusText(manual.entry) }}
+        {{ manualPlayerStatusText() }}
       </div>
 
       <div v-if="manual.entry.status === 'done'" class="mt-2 flex items-center gap-2">
@@ -291,15 +255,11 @@ import ChampionIcon from '@renderer-shared/components/widgets/ChampionIcon.vue'
 import LcuImage from '@renderer-shared/components/LcuImage.vue'
 import SettingsRow from '@renderer-shared/components/SettingsRow.vue'
 import { profileIconUri } from '@renderer-shared/shards/league-client/game-data-assets'
-import { InGameSendRenderer } from '@renderer-shared/shards/in-game-send'
-import { useInGameSendStore } from '@renderer-shared/shards/in-game-send/store'
-import { useOngoingGameStore } from '@renderer-shared/shards/ongoing-game/store'
-import { useInstance } from '@renderer-shared/shards'
 import { useAppCommonStore } from '@renderer-shared/shards/app-common/store'
+import { useInGameSendStore } from '@renderer-shared/shards/in-game-send/store'
 import { useStreamerModeMaskedText } from '@renderer-shared/composables/useStreamerModeMaskedText'
-import { getInGameSendAiEvaluationShortcutTargetId } from '@shared/shards/in-game-send'
-import ShortcutSelector from '@main-window/components/ShortcutSelector.vue'
-import NameDisplayStrategySelector from '../widgets/NameDisplayStrategySelector.vue'
+import { useInstance } from '@renderer-shared/shards'
+import { InGameSendRenderer } from '@renderer-shared/shards/in-game-send'
 import {
   DocumentText24Regular as DryRunIcon,
   Send24Filled as SendIcon,
@@ -310,8 +270,6 @@ import {
   NAlert,
   NButton,
   NCheckbox,
-  NCollapse,
-  NCollapseItem,
   NDivider,
   NIcon,
   NInput,
@@ -322,81 +280,50 @@ import {
 } from 'naive-ui'
 import { computed, ref } from 'vue'
 
-import { AI_EVALUATION_SYSTEM_PROMPT } from '../ai-evaluation/prompt'
-import {
-  type AiEvaluationPlayerEntry,
-  type AiEvaluationTargetId,
-  useAiEvaluation
-} from '../ai-evaluation/use-ai-evaluation'
+import NameDisplayStrategySelector from '../widgets/NameDisplayStrategySelector.vue'
+import PreviewPanel from '../widgets/PreviewPanel.vue'
+import ShortcutSelector from '@main-window/components/ShortcutSelector.vue'
 import { usePresetTargets } from '../widgets/usePresetTargets'
+import { type AiEvaluationTargetId, useAiEvaluation } from '../ai-evaluation/use-ai-evaluation'
 
 const { t } = useTranslation('renderer', { keyPrefix: 'toolkit.inGameSend.presets.aiEvaluation' })
 const { t: tSelection } = useTranslation('renderer', {
   keyPrefix: 'toolkit.inGameSend.presets.selection'
 })
 const { t: tTeams } = useTranslation('renderer', { keyPrefix: 'toolkit.inGameSend.presets.teams' })
-const { t: tAi } = useTranslation('renderer', {
-  keyPrefix: 'toolkit.inGameSend.presets.aiEvaluation'
-})
+
 const message = useMessage()
 const as = useAppCommonStore()
-const ogs = useOngoingGameStore()
 const { masked } = useStreamerModeMaskedText()
 
+const igs = useInstance(InGameSendRenderer)
+const igsStore = useInGameSendStore()
+const targets = usePresetTargets()
+const manualSending = ref(false)
+
+// PresetScopeContext 适配器（快捷键 / 发送 / 试运行 / 预览面板均复用预设 tab 的组件）
+const aiEvaluation = useAiEvaluation()
+const scope = aiEvaluation
+
 const {
-  rows,
-  manual,
-  manualRunning,
+  shortcutTargetIds,
+  shortcuts,
+  setShortcut,
+  dryRun,
+  gamePhase,
+  running,
+  previewedLines,
   allGamePlayers,
   selectedGamePlayerCount,
   isPlayerSelected,
   setPlayerSelected,
   setAllPlayersSelected,
-  commonDisabledReason,
-  getTargetDisabledReason,
-  getTargetSendDisabledReason,
-  getTargetPlayers,
-  runTargetEvaluation,
-  sendTargetReplies,
+  manual,
+  manualRunning,
   runManualEvaluation,
-  sendManualReply
-} = useAiEvaluation()
-
-const targets = usePresetTargets()
-const igsStore = useInGameSendStore()
-const igs = useInstance(InGameSendRenderer)
-const manualSending = ref(false)
-
-function getShortcutTargetId(target: AiEvaluationTargetId) {
-  return getInGameSendAiEvaluationShortcutTargetId(target)
-}
-
-function setShortcut(target: AiEvaluationTargetId, shortcutId: string | null) {
-  void igs.setAiEvaluationTargetShortcut(target, shortcutId)
-}
-
-function targetDryRunDisabledReason(target: AiEvaluationTargetId) {
-  return getTargetDisabledReason(target)
-}
-
-function targetDescription(target: { id: AiEvaluationTargetId; description: string }) {
-  const count = getTargetPlayers(target.id).length
-  return `${target.description} · ${t('teamsCount', { count })}`
-}
-
-const phaseContextLabel = computed(() => {
-  switch (ogs.queryStage.phase) {
-    case 'lobby':
-      return tAi('teamContext.lobby')
-    case 'draft':
-    case 'champ-select':
-      return tAi('teamContext.champSelect')
-    case 'in-game':
-      return tAi('teamContext.inGame')
-    default:
-      return ''
-  }
-})
+  sendManualReply,
+  commonDisabledReason
+} = aiEvaluation
 
 const playerGroups = computed(() => {
   const groups: {
@@ -434,30 +361,33 @@ function setGroupSelected(group: { members: { puuid: string }[] }, checked: bool
   }
 }
 
-function doneCount(target: AiEvaluationTargetId) {
-  return rows[target].evaluations.filter((e) => e.status === 'done').length
-}
-
-function playerStatusText(evaluation: AiEvaluationPlayerEntry) {
-  switch (evaluation.status) {
-    case 'pending':
-      return t('playerStatus.pending')
-    case 'fetching':
-      return t('playerStatus.fetching')
-    case 'analyzing':
-      return t('playerStatus.analyzing')
-    case 'no-data':
-      return t('playerStatus.noData')
-    case 'error':
-      return t('playerStatus.error', { message: evaluation.errorMessage })
-    default:
-      return ''
+const sendButtonText = computed(() => {
+  if (gamePhase.value === 'in-game') {
+    return t('sendToGame')
   }
+
+  return t('sendToChat')
+})
+
+function sendDisabledReason() {
+  if (running.value) {
+    return t('reasons.running')
+  }
+
+  if (!previewedLines.value) {
+    return t('reasons.notReady')
+  }
+
+  return ''
 }
 
-/** 界面上的玩家名遵守主播模式脱敏 */
-function maskedName(name: string) {
-  return masked(name)
+function dryRunDisabledReason() {
+  return commonDisabledReason()
+}
+
+function targetDescription(target: { id: AiEvaluationTargetId; description: string }) {
+  const count = aiEvaluation.getTargetPlayers(target.id).length
+  return `${target.description} · ${t('teamsCount', { count })}`
 }
 
 function manualQueryDisabledReason() {
@@ -466,6 +396,32 @@ function manualQueryDisabledReason() {
   }
 
   return commonDisabledReason()
+}
+
+function manualPlayerStatusText() {
+  const entry = manual.entry
+
+  if (!entry) {
+    return ''
+  }
+
+  switch (entry.status) {
+    case 'fetching':
+      return t('playerStatus.fetching')
+    case 'analyzing':
+      return t('playerStatus.analyzing')
+    case 'no-data':
+      return t('playerStatus.noData')
+    case 'error':
+      return t('playerStatus.error', { message: entry.errorMessage })
+    default:
+      return ''
+  }
+}
+
+/** 界面上的玩家名遵守主播模式脱敏 */
+function maskedName(name: string) {
+  return masked(name)
 }
 
 async function copyManualReply() {
@@ -488,6 +444,6 @@ async function handleSendManual() {
 }
 
 async function handleSendTarget(target: AiEvaluationTargetId) {
-  await sendTargetReplies(target)
+  await aiEvaluation.send(target)
 }
 </script>
