@@ -319,7 +319,8 @@ export function useAiEvaluation() {
 
       if (!games.length) {
         entry.status = 'no-data'
-        return `${entry.displayName || entry.name}：${t('playerStatus.noData')}`
+        entry.reply = t('playerStatus.noData')
+        return `${entry.displayName || entry.name}：${entry.reply}`
       }
 
       entry.status = 'analyzing'
@@ -341,14 +342,14 @@ export function useAiEvaluation() {
 
       if (!report) {
         entry.status = 'no-data'
-        return `${entry.displayName || entry.name}：${t('playerStatus.noData')}`
+        entry.reply = t('playerStatus.noData')
+        return `${entry.displayName || entry.name}：${entry.reply}`
       }
 
       if (report.sampleSize < AI_EVALUATION_MIN_SAMPLE) {
         entry.status = 'done'
-        return `${entry.displayName || entry.name}：${t('lowSampleReply', {
-          count: report.sampleSize
-        })}`
+        entry.reply = t('lowSampleReply', { count: report.sampleSize })
+        return `${entry.displayName || entry.name}：${entry.reply}`
       }
 
       entry.reply = buildEvaluationText(report)
@@ -357,9 +358,8 @@ export function useAiEvaluation() {
     } catch (error) {
       entry.status = 'error'
       entry.errorMessage = error instanceof Error ? error.message : String(error)
-      return `${entry.displayName || entry.name}：${t('playerStatus.error', {
-        message: entry.errorMessage
-      })}`
+      entry.reply = t('playerStatus.error', { message: entry.errorMessage })
+      return `${entry.displayName || entry.name}：${entry.reply}`
     }
   }
 

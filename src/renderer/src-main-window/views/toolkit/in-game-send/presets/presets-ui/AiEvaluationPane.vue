@@ -437,13 +437,21 @@ async function handleSendManual() {
 
   manualSending.value = true
   try {
-    await sendManualReply()
+    const sent = await sendManualReply()
+
+    if (!sent) {
+      message.error(t('sendFailed'))
+    }
   } finally {
     manualSending.value = false
   }
 }
 
 async function handleSendTarget(target: AiEvaluationTargetId) {
-  await aiEvaluation.send(target)
+  const sent = await aiEvaluation.send(target)
+
+  if (!sent) {
+    message.error(t('sendFailed'))
+  }
 }
 </script>

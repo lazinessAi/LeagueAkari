@@ -486,6 +486,7 @@ toolkit:
         shortcut: Shortcut
         description: Generates an evaluation from a player's last 50 ARAM Mayhem games. Dry run fetches the match data and analyzes it; sending unlocks after every player is done.
         dryRun: Dry Run
+        sendFailed: 'Send failed. Make sure you are in champion select, a lobby, or a game'
         sendToChat: Send to Chat
         copy: Copy
         copied: Copied
