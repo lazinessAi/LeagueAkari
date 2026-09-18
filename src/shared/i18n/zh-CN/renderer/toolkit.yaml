@@ -517,6 +517,11 @@ toolkit:
           query: 查询
           inputInvalid: 请输入 游戏名#标签 格式的召唤师名
           notFound: 未找到该召唤师
+      horseGrade:
+        label: 海斗马种评价
+        notice: 实验功能：目前仅支持海克斯大乱斗对局的数据分析，其他模式暂不支持。
+        description: 基于全部选中玩家的近 100 场海克斯大乱斗对局总体数据，按正态分布将玩家分为马头 / 上等马 / 中等马 / 下等马 / 牛马 五档。点击试运行拉取数据并分析，全部完成后才能发送。
+        noGames: 对局数据不足，无法进行马种评定
       customTemplate:
         label: 自定义模板
         risk:

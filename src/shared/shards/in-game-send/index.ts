@@ -249,6 +249,10 @@ export function getInGameSendAiEvaluationShortcutTargetId(target: InGameSendPres
   return `${IN_GAME_SEND_AI_EVALUATION_SHORTCUT_TARGET_ID_PREFIX}/${target}`
 }
 
+export function getInGameSendHorseGradeShortcutTargetId(target: InGameSendPresetTarget) {
+  return `in-game-send-main/horse-grade/${target}`
+}
+
 export function normalizeInGameSendFixedTextPresetItem(
   item: InGameSendFixedTextPresetItem
 ): InGameSendFixedTextPresetItem {

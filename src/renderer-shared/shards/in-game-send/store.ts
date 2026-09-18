@@ -22,6 +22,7 @@ export const useInGameSendStore = defineStore('shard:in-game-send-renderer', () 
     customTemplateRiskNoticeShown: false,
     customTemplateItems: createDefaultInGameSendCustomTemplateItems(),
     aiEvaluationTargetShortcuts: createDefaultInGameSendPresetTargetShortcuts(),
+    horseGradeTargetShortcuts: createDefaultInGameSendPresetTargetShortcuts(),
     aiEvaluationNameDisplayStrategy: 'preferChampionName' as InGameSendPresetNameDisplayStrategy
   })
 

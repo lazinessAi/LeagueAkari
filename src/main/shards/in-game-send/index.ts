@@ -122,6 +122,10 @@ export class InGameSendMain implements IAkariShardInitDispose {
           default: this.settings.aiEvaluationTargetShortcuts,
           schema: inGameSendTargetShortcutsSchema
         },
+        horseGradeTargetShortcuts: {
+          default: this.settings.horseGradeTargetShortcuts,
+          schema: inGameSendTargetShortcutsSchema
+        },
         aiEvaluationNameDisplayStrategy: {
           default: this.settings.aiEvaluationNameDisplayStrategy,
           schema: inGameSendNameDisplayStrategySchema
@@ -180,6 +184,7 @@ export class InGameSendMain implements IAkariShardInitDispose {
       'fixedTextPresetItems',
       'customTemplateRiskNoticeShown',
       'aiEvaluationTargetShortcuts',
+      'horseGradeTargetShortcuts',
       'aiEvaluationNameDisplayStrategy',
       'customTemplateItems'
     ])

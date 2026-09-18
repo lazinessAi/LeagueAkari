@@ -27,6 +27,8 @@ export class InGameSendSettings {
     createDefaultInGameSendFixedTextPresetItems()
   customTemplateRiskNoticeShown = false
   aiEvaluationNameDisplayStrategy: InGameSendPresetNameDisplayStrategy = 'preferChampionName'
+  horseGradeTargetShortcuts: InGameSendPresetTargetShortcuts =
+    createDefaultInGameSendPresetTargetShortcuts()
   aiEvaluationTargetShortcuts: InGameSendPresetTargetShortcuts =
     createDefaultInGameSendPresetTargetShortcuts()
   customTemplateItems: InGameSendCustomTemplateItem[] = createDefaultInGameSendCustomTemplateItems()
@@ -46,7 +48,8 @@ export class InGameSendSettings {
       premadePresetOptions: observableRef,
       fixedTextPresetItems: observableRef,
       customTemplateItems: observableRef,
-      aiEvaluationTargetShortcuts: observableRef
+      aiEvaluationTargetShortcuts: observableRef,
+      horseGradeTargetShortcuts: observableRef
     })
   }
 }

@@ -40,6 +40,11 @@
           <AiEvaluationPane />
         </div>
       </NTabPane>
+      <NTabPane name="horse-grade" :tab="t('horseGrade.label')" display-directive="show:lazy">
+        <div class="min-h-140">
+          <HorseGradePane />
+        </div>
+      </NTabPane>
     </NTabs>
   </div>
 </template>
@@ -54,6 +59,7 @@ import { junglePresetSlot } from './data/jungle'
 import { premadePresetSlot } from './data/premade'
 import { ratingPresetSlot } from './data/rating'
 import AiEvaluationPane from './presets-ui/AiEvaluationPane.vue'
+import HorseGradePane from './presets-ui/HorseGradePane.vue'
 import CustomTemplatePresetPane from './presets-ui/CustomTemplatePresetPane.vue'
 import FixedTextPresetPane from './presets-ui/FixedTextPresetPane.vue'
 import JunglePresetPane from './presets-ui/JunglePresetPane.vue'

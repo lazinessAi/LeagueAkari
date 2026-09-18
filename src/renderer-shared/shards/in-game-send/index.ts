@@ -228,6 +228,15 @@ export class InGameSendRenderer implements IAkariShardInitDispose {
   }
 
   /** 更新 AI 评价某个目标的发送快捷键（整体替换该设置） */
+  setHorseGradeTargetShortcut(target: InGameSendPresetTarget, shortcutId: string | null) {
+    const { horseGradeTargetShortcuts } = useInGameSendStore().settings
+
+    return this._settingUtils.set(MAIN_SHARD_NAMESPACE, 'horseGradeTargetShortcuts', {
+      ...horseGradeTargetShortcuts,
+      [target]: shortcutId
+    })
+  }
+
   setAiEvaluationNameDisplayStrategy(strategy: InGameSendPresetNameDisplayStrategy) {
     return this._settingUtils.set(MAIN_SHARD_NAMESPACE, 'aiEvaluationNameDisplayStrategy', strategy)
   }
