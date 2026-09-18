@@ -484,10 +484,11 @@ toolkit:
         label: Haidou Evaluation
         notice: 'Experimental feature: currently only supports ARAM Mayhem game data analysis. Other modes are not supported yet.'
         shortcut: Shortcut
-        description: Generates an evaluation from a player's last 50 ARAM Mayhem games. Dry run fetches the match data and analyzes it; sending unlocks after every player is done.
+        description: Generates an evaluation from a player's last 100 ARAM Mayhem games. Dry run fetches the match data and analyzes it; sending unlocks after every player is done.
         dryRun: Dry Run
         sendFailed: 'Send failed. Make sure you are in champion select, a lobby, or a game'
         sendToChat: Send to Chat
+        sendToGame: Send to Game
         copy: Copy
         copied: Copied
         teamsCount: '{{count}} players'
@@ -508,7 +509,7 @@ toolkit:
           pending: Waiting
           fetching: Fetching match history...
           analyzing: Analyzing...
-          noData: No ARAM Mayhem games in the last 50 games
+          noData: No ARAM Mayhem games in the last 100 games
           error: 'Failed: {{message}}'
         manual:
           label: Manual Lookup

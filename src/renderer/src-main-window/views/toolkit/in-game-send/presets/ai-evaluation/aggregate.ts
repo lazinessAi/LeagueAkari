@@ -5,6 +5,7 @@
  * 输出直接可拼进提示词的聚合报告。口径与调试期脚本一致：
  * 伤转率 = 伤害占比 ÷ 经济占比（队内归一化，基准 1.0）。
  */
+import { type WinTradingGameInput, computeWinTradingSuspicion } from './win-trading'
 
 export interface AramMayhemGameJson {
   gameId: number
@@ -258,16 +259,24 @@ export function buildAramMayhemReport(args: {
     const item0 = stat(me, 'item0')
     const item0Name = item0 ? itemNames?.[item0] : undefined
     const guardianStart = !!item0Name && item0Name.startsWith('守护者')
+    // 血瓶类装备：生命药水 2003 / 复用型药水 2031 / 神谕精粹 2032 / 幽魂之血 2033
+    const POTION_ITEM_IDS = [2003, 2031, 2032, 2033]
+    const potionItems = [1, 2, 3, 4, 5, 6]
+      .map((i) => stat(me, `item${i}`))
+      .filter((id) => id && POTION_ITEM_IDS.includes(id))
+    const hasPotion = potionItems.length > 0
     const FLASH_SPELL_ID = 4
     const flashOnD = stat(me, 'spell1Id') === FLASH_SPELL_ID
     const flashOnF = stat(me, 'spell2Id') === FLASH_SPELL_ID
 
     const surrendered = !!(stat(me, 'gameEndedInSurrender') || stat(me, 'gameEndedInIGNBSurrender'))
+    const isRemake = !!stat(me, 'gameEndedInEarlySurrender')
     const teamGoldAll = teamGold + enemyGold
     const teamKillsAll = teamKills + enemyKills
 
     return {
       gameId: game.gameId,
+      gameCreation: game.gameCreation,
       date: new Date(game.gameCreation).toISOString().slice(0, 10),
       durationMin: round(durMin),
       championId: me.championId,
@@ -310,11 +319,16 @@ export function buildAramMayhemReport(args: {
         (stat(me, 'pentaKills') ?? 0),
       firstBlood: !!(stat(me, 'firstBloodKill') || stat(me, 'firstBloodAssist')),
       surrendered,
+      isRemake,
+      hasPotion,
       goldShareAll: teamGoldAll > 0 ? round(teamGold / teamGoldAll, 3) : 0.5,
+      teamKills: teamKills,
+      enemyKills: enemyKills,
       killShareAll: teamKillsAll > 0 ? round(teamKills / teamKillsAll, 3) : 0.5,
       towerLead:
         teamTowerKills(game, me.teamId) - teamTowerKills(game, me.teamId === 100 ? 200 : 100),
       ownTowerKills: teamTowerKills(game, me.teamId),
+      enemyTowerKills: teamTowerKills(game, me.teamId === 100 ? 200 : 100),
       guardianStart,
       flashOnD,
       flashOnF,
@@ -337,7 +351,6 @@ export function buildAramMayhemReport(args: {
   const agg = (key: string) => entries.map((g) => g[key] as number)
   const winsGames = entries.filter((g) => g.win)
   const losses = entries.filter((g) => !g.win)
-  const surrenderedLosses = losses.filter((g) => g.surrendered)
   const dmgShares = agg('damageShare')
   const sortedShares = [...dmgShares].sort((a, b) => a - b)
   const bottomQuartile = sortedShares.slice(0, Math.floor(n / 4))
@@ -440,68 +453,35 @@ export function buildAramMayhemReport(args: {
     .filter((x) => x.games > 0)
     .sort((a, b) => b.games - a.games)[0] ?? { bucket: 'unknown', games: 0 }
 
-  // 刷负三信号
-  const advantageSurrenderLosses = surrenderedLosses.filter((g) => g.goldShareAll >= 0.55)
-  const advantageSurrenderRate = surrenderedLosses.length
-    ? round(advantageSurrenderLosses.length / surrenderedLosses.length, 3)
-    : 0
-  const towerLeadSurrenderRate = surrenderedLosses.length
-    ? round(surrenderedLosses.filter((g) => g.towerLead >= 1).length / surrenderedLosses.length, 3)
-    : 0
-
-  const pairCount = new Map<string, number>()
-  for (const g of surrenderedLosses) {
-    for (let i = 0; i < g.teammates.length; i++) {
-      for (let j = i + 1; j < g.teammates.length; j++) {
-        const key = [g.teammates[i], g.teammates[j]].sort().join('|')
-        pairCount.set(key, (pairCount.get(key) ?? 0) + 1)
-      }
-    }
-  }
-  const topPairCount = Math.max(0, ...pairCount.values())
-  const premadePairRate = surrenderedLosses.length
-    ? round(topPairCount / surrenderedLosses.length, 3)
-    : 0
-
   const overallWinRate = round(wins / n, 3)
   const highWinRate = overallWinRate >= 0.7
   const lowLevelHighWinRate = playerLevel != null && playerLevel < 100 && highWinRate
 
-  // 刷负嫌疑（连续信号，基于已确认的刷负画像：固定车队投降 + 塔领先 + 高投降败局占比）
-  // premadePairRate 是主证据但需折扣（好友固定开黑基线远高于 0）；高胜率是反证（降 25pp）
-  const surrenderedLossShare = n ? round(surrenderedLosses.length / n, 3) : 0
-  let winTradingSuspicionProbability = 0
-  if (surrenderedLosses.length >= 2) {
-    winTradingSuspicionProbability = round(
-      Math.max(
-        0,
-        Math.min(
-          0.95,
-          0.2 +
-            Math.max(0, premadePairRate - 0.3) * 0.8 +
-            Math.max(0, towerLeadSurrenderRate - 0.56) * 0.3 +
-            Math.max(0, surrenderedLossShare - 0.86) * 0.3 -
-            (overallWinRate >= 0.6 ? 0.25 : 0)
-        )
-      ),
-      2
-    )
-  }
-  const winTradingSuspicionLevel: AiEvaluationSuspicionLevel =
-    winTradingSuspicionProbability >= 0.75
-      ? 'high'
-      : winTradingSuspicionProbability >= 0.5
-        ? 'medium'
-        : winTradingSuspicionProbability > 0
-          ? 'low'
-          : 'none'
+  // 刷负嫌疑：四门控算法（数据量 / 组队低胜区间 / 主动投降 / 推塔持平或领先）
+  const winTradingGames: WinTradingGameInput[] = entries.map((entry) => ({
+    gameCreation: entry.gameCreation,
+    durationMin: entry.durationMin,
+    win: entry.win,
+    surrendered: entry.surrendered,
+    isRemake: entry.isRemake,
+    ownTowerKills: entry.ownTowerKills,
+    enemyTowerKills: entry.enemyTowerKills,
+    teamKills: entry.teamKills,
+    enemyKills: entry.enemyKills,
+    guardianStart: entry.guardianStart,
+    hasPotion: entry.hasPotion,
+    teammates: entry.teammates
+  }))
+  const winTradingResult = computeWinTradingSuspicion(winTradingGames)
+  const winTradingSuspicionProbability = winTradingResult.probability / 100
   // 小号嫌疑（启发式，积分制）
   // S1 成长断层：近段(最近25场) vs 远段(更早25场) 胜率差≥25pp 或 伤转率差≥30pp（两段各≥10场才有效）
   // S2 低等级（分级计分）：<100 计1；≤50 计2；≤30 计3；≤10 计4
   // S3 守护者出门装：item0 名以"守护者"开头的场次 ≥3
   // S4 闪现异位：D 闪与 F 闪同时存在
-  const recentGames = entries.slice(0, 25)
-  const remoteGames = entries.slice(25, 50)
+  // 前后半段对比：近一半 vs 更早一半
+  const recentGames = entries.slice(0, Math.floor(n / 2))
+  const remoteGames = entries.slice(Math.floor(n / 2))
   const segmentsValid = recentGames.length >= 10 && remoteGames.length >= 10
   const recentWR = segmentsValid ? mean(recentGames.map((g) => (g.win ? 1 : 0))) : 0
   const remoteWR = segmentsValid ? mean(remoteGames.map((g) => (g.win ? 1 : 0))) : 0
@@ -613,20 +593,21 @@ export function buildAramMayhemReport(args: {
     augmentStats: { avgPerGame: round(augmentSlots / n, 2), table: augmentTable },
     winTrading: {
       heuristicNote:
-        '三信号：premadePairRate=投降败局中固定队友对共现率（基线≈0，≥50%即高嫌疑）；advantageSurrenderRate=投降败局中终局经济占比≥55%比例（基线≈0%）；towerLeadSurrenderRate=投降败局推塔净胜≥1比例（基线≈56%，仅辅助印证）',
-      losses: losses.length,
-      surrenderedLossCount: surrenderedLosses.length,
-      premadeTopPairCount: topPairCount,
-      premadePairRate,
-      advantageSurrenderCount: advantageSurrenderLosses.length,
-      advantageSurrenderRate,
-      towerLeadSurrenderRate,
+        '四门控算法（全过才计分，短板惩罚）：G1 样本量(10-100场排除重开局)；G2 组队低胜区间(4/5黑+胜率<50%，越长/占比越高越可信)；G3 区间内败局主动投降率(≥70%满，50%低数据放宽)；G4 投降败局中推塔持平/领先占比(≥90%满，<70%不通过)。加性合成 55+Σ(门控置信度×权重)，任一门控置信度<0.7 上限 75',
+      ...winTradingResult,
       suspicionProbability: winTradingSuspicionProbability,
-      suspicionLevel: winTradingSuspicionLevel
+      suspicionLevel:
+        winTradingResult.probability >= 75
+          ? 'high'
+          : winTradingResult.probability >= 50
+            ? 'medium'
+            : winTradingResult.probability > 0
+              ? 'low'
+              : 'none'
     },
     smurf: {
       heuristicNote:
-        '仅输出事实信号，可能性由 AI 综合判断：growthCliff=近25场vs更早25场胜率差≥25pp或伤转率差≥30pp（两段各≥10场）；winRateGap/damageGoldEfficiencyGap=前后段差值(pp)；playerLevel/levelScore=账号等级（<100 偏低，越低越可疑）；overallWinRate/highWinRate/lowLevelHighWinRate=总胜率与"低等级+高胜率"组合（小号的典型画像）；guardianStartCount=守护者出门装场次（正常≈0）；flashSwap=D 闪与 F 闪并存',
+        '仅输出事实信号，可能性由 AI 综合判断：growthCliff=前半段vs后半段胜率差≥25pp或伤转率差≥30pp（两段各≥10场）；winRateGap/damageGoldEfficiencyGap=前后段差值(pp)；playerLevel/levelScore=账号等级（<100 偏低，越低越可疑）；overallWinRate/highWinRate/lowLevelHighWinRate=总胜率与"低等级+高胜率"组合（小号的典型画像）；guardianStartCount=守护者出门装场次（正常≈0）；flashSwap=D 闪与 F 闪并存',
       signals: {
         growthCliff,
         winRateGap,

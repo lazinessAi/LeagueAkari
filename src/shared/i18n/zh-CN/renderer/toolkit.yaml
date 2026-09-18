@@ -484,10 +484,11 @@ toolkit:
         label: 海斗评价
         notice: 实验功能：目前仅支持海克斯大乱斗对局的数据分析，其他模式暂不支持。
         shortcut: 快捷键
-        description: 基于玩家近 50 场海克斯大乱斗数据生成评价。点击试运行拉取对局数据并分析，全部玩家完成后才能发送。
+        description: 基于玩家近 100 场海克斯大乱斗数据生成评价。点击试运行拉取对局数据并分析，全部玩家完成后才能发送。
         dryRun: 试运行
         sendFailed: 发送失败，请确认当前处于英雄选择 / 房间 / 对局中
         sendToChat: 发送到聊天
+        sendToGame: 发送到游戏
         copy: 复制
         copied: 已复制
         teamsCount: '{{count}} 名玩家'
@@ -508,7 +509,7 @@ toolkit:
           pending: 等待中
           fetching: 拉取战绩中...
           analyzing: 分析中...
-          noData: 近 50 场无海克斯大乱斗对局
+          noData: 近 100 场无海克斯大乱斗对局
           error: 失败：{{message}}
         manual:
           label: 手动查询

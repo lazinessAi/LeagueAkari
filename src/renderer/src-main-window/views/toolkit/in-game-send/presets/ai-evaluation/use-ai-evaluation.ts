@@ -369,13 +369,40 @@ export function useAiEvaluation() {
     }
 
     const players = getTargetPlayers(target)
-    const entries: AiEvaluationPlayerEntry[] = players.map((player) => ({
-      ...player,
-      displayName: player.name,
-      status: 'pending',
-      reply: '',
-      errorMessage: ''
-    }))
+    const strategy = igsStore.settings.aiEvaluationNameDisplayStrategy
+
+    // 名字展示策略：优先英雄名时，存在重复英雄则回退玩家名（避免聊天里分不清）
+    const championCounts = new Map<number, number>()
+    if (strategy !== 'preferName') {
+      for (const player of players) {
+        const championId = ogs.championSelections[player.puuid]
+        if (championId) {
+          championCounts.set(championId, (championCounts.get(championId) ?? 0) + 1)
+        }
+      }
+    }
+
+    const entries: AiEvaluationPlayerEntry[] = players.map((player) => {
+      const championId = ogs.championSelections[player.puuid] ?? null
+      const championName = championId ? lcStore.gameData.champions[championId]?.name : undefined
+      const noDuplicate = championId && (championCounts.get(championId) ?? 0) <= 1
+
+      let displayName = player.name
+      if (strategy === 'preferChampionName' && championName && noDuplicate) {
+        displayName = championName
+      } else if (strategy === 'championNameWithName' && championName && noDuplicate) {
+        displayName = `${championName}（${player.name}）`
+      }
+
+      return {
+        puuid: player.puuid,
+        name: player.name,
+        displayName,
+        status: 'pending',
+        reply: '',
+        errorMessage: ''
+      }
+    })
     evaluations[target] = entries
 
     running.value = true

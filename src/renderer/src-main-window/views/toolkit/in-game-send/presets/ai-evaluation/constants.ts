@@ -2,10 +2,10 @@
 export const AI_EVALUATION_QUEUE_ID = 2400
 
 /** 参与聚合分析的对局数上限 */
-export const AI_EVALUATION_GAME_COUNT = 50
+export const AI_EVALUATION_GAME_COUNT = 100
 
 /** 拉取战绩列表时的请求数量，先多拉再按队列过滤 */
-export const AI_EVALUATION_SUMMARY_FETCH_COUNT = 100
+export const AI_EVALUATION_SUMMARY_FETCH_COUNT = 200
 
 /** 并发调用 AI 的上限（AI 提供商有限流，不允许全量并发） */
 export const AI_EVALUATION_CONCURRENCY = 2
