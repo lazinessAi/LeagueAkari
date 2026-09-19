@@ -197,7 +197,7 @@ export function useHorseGrade() {
           const result = report.players.find((p) => p.puuid === player.puuid)
           lines.push(
             result
-              ? `${player.name}：${result.grade}（评分 ${result.score}，超过 ${result.percentile}% 的玩家）`
+              ? `${player.name}：${result.grade}·${result.subLevel}（评分 ${result.score}，超过 ${result.percentile}% 的玩家）`
               : `${player.name}：${t('playerStatus.noData')}`
           )
         }
@@ -326,7 +326,7 @@ export function useHorseGrade() {
         return
       }
 
-      manual.entry.text = `${player.grade}（评分 ${player.score}，超过 ${player.percentile}% 的玩家，参与 ${player.metrics.gameCount} 场）`
+      manual.entry.text = `${player.grade}·${player.subLevel}（评分 ${player.score}，超过 ${player.percentile}% 的玩家，参与 ${player.metrics.gameCount} 场）`
       manual.entry.status = 'done'
     } catch (error) {
       manual.entry.status = 'error'

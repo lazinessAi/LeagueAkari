@@ -220,6 +220,57 @@ function compositeScore(
   return terms.reduce((sum, term) => sum + term.weight * term.z, 0) / weightSum
 }
 
+type SubLevel = '甲级' | '乙级' | '丙级' | '丁级'
+
+/**
+ * 在马种等级的分数区间内按位置划分甲/乙/丙/丁。
+ * 有界区间均分四份；马头/牛马的无界方向截断到 ±3σ。
+ */
+function computeSubLevel(
+  score: number,
+  grade: HorseGrade,
+  compositeMean: number,
+  compositeStd: number
+): SubLevel {
+  const σ = compositeStd
+  const μ = compositeMean
+
+  let low: number
+  let high: number
+
+  switch (grade) {
+    case '马头':
+      if (score >= μ + 2.5 * σ) return '甲级'
+      low = μ + 1.5 * σ
+      high = μ + 2.5 * σ
+      break
+    case '上等马':
+      low = μ + 0.5 * σ
+      high = μ + 1.5 * σ
+      break
+    case '中等马':
+      low = μ - 0.5 * σ
+      high = μ + 0.5 * σ
+      break
+    case '下等马':
+      low = μ - 1.5 * σ
+      high = μ - 0.5 * σ
+      break
+    case '牛马':
+      if (score <= μ - 2.5 * σ) return '丁级'
+      low = μ - 2.5 * σ
+      high = μ - 1.5 * σ
+      break
+  }
+
+  const position = (score - low) / (high - low)
+
+  if (position >= 0.75) return '甲级'
+  if (position >= 0.5) return '乙级'
+  if (position >= 0.25) return '丙级'
+  return '丁级'
+}
+
 export interface HorseGradeReport {
   /** 参与统计的去重对局数 */
   gameCount: number
@@ -242,6 +293,7 @@ export interface HorseGradeReport {
 
 export interface HorseGradeResult {
   grade: HorseGrade
+  subLevel: '甲级' | '乙级' | '丙级' | '丁级'
   /** 综合评分（相对总体的 z 分数） */
   score: number
   /** 正态模型估计的分位（0-100，越高越强） */
@@ -343,12 +395,12 @@ export function buildHorseGradeReport(args: {
     return null
   }
 
-  // 5. 正态分布分层后的分数区间
+  // 5. 正态分布分层后的分数区间（±0.5σ / ±1.5σ，避免中档过宽）
   const bands = {
-    head: round(compositeMean + 2 * compositeStd, 3),
-    upper: round(compositeMean + compositeStd, 3),
-    lower: round(compositeMean - compositeStd, 3),
-    ox: round(compositeMean - 2 * compositeStd, 3)
+    head: round(compositeMean + 1.5 * compositeStd, 3),
+    upper: round(compositeMean + 0.5 * compositeStd, 3),
+    lower: round(compositeMean - 0.5 * compositeStd, 3),
+    ox: round(compositeMean - 1.5 * compositeStd, 3)
   }
 
   // 6. 逐玩家评分与马种
@@ -367,6 +419,7 @@ export function buildHorseGradeReport(args: {
         name: player.name,
         displayName: player.name,
         grade: '中等马',
+        subLevel: '丙级',
         score: compositeMean,
         percentile: 50,
         metrics: {
@@ -391,6 +444,7 @@ export function buildHorseGradeReport(args: {
         name: player.name,
         displayName: player.name,
         grade: '中等马',
+        subLevel: '丙级',
         score: compositeMean,
         percentile: 50,
         metrics: {
@@ -419,11 +473,14 @@ export function buildHorseGradeReport(args: {
       grade = '牛马'
     }
 
+    const subLevel = computeSubLevel(composite, grade, compositeMean, compositeStd)
+
     results.push({
       puuid: player.puuid,
       name: player.name,
       displayName: player.name,
       grade,
+      subLevel,
       score: round(composite, 2),
       percentile: gradeToPercentile(composite),
       metrics: {
