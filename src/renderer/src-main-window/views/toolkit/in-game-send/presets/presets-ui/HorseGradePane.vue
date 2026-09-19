@@ -278,13 +278,14 @@ import {
   NRadioGroup,
   useMessage
 } from 'naive-ui'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import NameDisplayStrategySelector from '../widgets/NameDisplayStrategySelector.vue'
 import PreviewPanel from '../widgets/PreviewPanel.vue'
 import ShortcutSelector from '@main-window/components/ShortcutSelector.vue'
 import { usePresetTargets } from '../widgets/usePresetTargets'
 import { type HorseGradeTargetId, useHorseGrade } from '../horse-grade/use-horse-grade'
+import { consumeManualQueryRequest, manualQueryRequest } from '../manual-query-request'
 
 const { t } = useTranslation('renderer', { keyPrefix: 'toolkit.inGameSend.presets.horseGrade' })
 const { t: tAi } = useTranslation('renderer', {
@@ -457,4 +458,19 @@ async function handleSendTarget(target: HorseGradeTargetId) {
     message.error(tAi('sendFailed'))
   }
 }
+
+// 战绩页跳转：自动填入召唤师名并触发手动查询
+watch(
+  () => manualQueryRequest.current,
+  (request) => {
+    if (!request || request.preset !== 'horse-grade') {
+      return
+    }
+
+    consumeManualQueryRequest()
+    manual.input = request.riotId
+    void runManualEvaluation()
+  },
+  { immediate: true }
+)
 </script>

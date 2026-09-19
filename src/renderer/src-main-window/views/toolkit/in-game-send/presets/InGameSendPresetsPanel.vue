@@ -52,12 +52,14 @@
 <script setup lang="ts">
 import { useTranslation } from 'i18next-vue'
 import { NTabPane, NTabs } from 'naive-ui'
+import { watch } from 'vue'
 
 import { customTemplatePresetSlot } from './data/custom-template'
 import { fixedTextPresetSlot } from './data/fixed-text'
 import { junglePresetSlot } from './data/jungle'
 import { premadePresetSlot } from './data/premade'
 import { ratingPresetSlot } from './data/rating'
+import { peekManualQueryRequest } from './manual-query-request'
 import AiEvaluationPane from './presets-ui/AiEvaluationPane.vue'
 import HorseGradePane from './presets-ui/HorseGradePane.vue'
 import CustomTemplatePresetPane from './presets-ui/CustomTemplatePresetPane.vue'
@@ -69,6 +71,17 @@ import { useInGameSendPresetsPanel } from './provider'
 
 const { t } = useTranslation('renderer', { keyPrefix: 'toolkit.inGameSend.presets' })
 const { activePreset } = useInGameSendPresetsPanel()
+
+// 战绩页发起的手动查询跳转：切换到对应预设 tab（查询本身由对应面板消费请求）
+watch(
+  () => peekManualQueryRequest(),
+  (request) => {
+    if (request) {
+      activePreset.value = request.preset
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <style scoped>

@@ -37,6 +37,36 @@
             >
               {{ summoner?.gameName || '—' }}
             </CopyableText>
+            <template v-if="summoner?.gameName && summoner.tagLine">
+              <div class="ml-1 flex items-center gap-1">
+                <NTooltip>
+                  <template #trigger>
+                    <NButton
+                      quaternary
+                      size="tiny"
+                      class="px-1.5!"
+                      @click="jumpToManualQuery('ai-evaluation')"
+                    >
+                      {{ tJump('aiEvaluationShort') }}
+                    </NButton>
+                  </template>
+                  {{ tJump('aiEvaluation') }}
+                </NTooltip>
+                <NTooltip>
+                  <template #trigger>
+                    <NButton
+                      quaternary
+                      size="tiny"
+                      class="px-1.5!"
+                      @click="jumpToManualQuery('horse-grade')"
+                    >
+                      {{ tJump('horseGradeShort') }}
+                    </NButton>
+                  </template>
+                  {{ tJump('horseGrade') }}
+                </NTooltip>
+              </div>
+            </template>
           </div>
           <div class="text-sm text-gray-500 dark:text-gray-400">
             {{ summoner ? `#${summoner.tagLine}` : '—' }}
@@ -92,8 +122,12 @@ import { useStreamerModeMaskedText } from '@renderer-shared/composables/useStrea
 import { profileIconUri } from '@renderer-shared/shards/league-client/game-data-assets'
 import { Edit20Filled } from '@vicons/fluent'
 import { RefreshSharp } from '@vicons/ionicons5'
-import { NButton, NIcon, NPopover } from 'naive-ui'
+import { NButton, NIcon, NPopover, NTooltip } from 'naive-ui'
 import { computed, ref } from 'vue'
+import { useTranslation } from 'i18next-vue'
+import { useRouter } from 'vue-router'
+
+import { requestManualQuery } from '@main-window/views/toolkit/in-game-send/presets/manual-query-request'
 
 import { usePlayerTab } from '../context'
 import { useSummoner } from '../data/summoner'
@@ -104,6 +138,19 @@ import RankedPane from './RankedPane.vue'
 const { puuid, isSelfTab, isCrossRegion } = usePlayerTab()
 const { summoner } = useSummoner()
 const { loadTags } = useTags()
+
+const router = useRouter()
+const { t: tJump } = useTranslation('renderer', {
+  keyPrefix: 'toolkit.inGameSend.presets.manualQueryJump'
+})
+
+function jumpToManualQuery(preset: 'ai-evaluation' | 'horse-grade') {
+  const s = summoner.value
+  if (!s?.gameName || !s.tagLine) return
+
+  requestManualQuery({ preset, riotId: `${s.gameName}#${s.tagLine}` })
+  void router.push({ name: 'toolkit', params: { section: 'in-game-send' } })
+}
 
 const { masked, summonerName: streamerSummonerName } = useStreamerModeMaskedText()
 

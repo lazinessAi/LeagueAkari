@@ -184,6 +184,7 @@ automation:
       friends:
         label: Friend Whitelist
         description: Select the friends whose champion swaps may be auto-accepted.
+        emptyHint: Selected friends appear here. Check friends on the right to add them.
         searchPlaceholder: Search friend name or tag
         unavailable: Not connected to the client, unable to load the friends list.
         noFriends: No friends found

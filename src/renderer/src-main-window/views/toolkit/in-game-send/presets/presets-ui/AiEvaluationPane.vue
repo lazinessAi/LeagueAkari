@@ -278,13 +278,14 @@ import {
   NRadioGroup,
   useMessage
 } from 'naive-ui'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import NameDisplayStrategySelector from '../widgets/NameDisplayStrategySelector.vue'
 import PreviewPanel from '../widgets/PreviewPanel.vue'
 import ShortcutSelector from '@main-window/components/ShortcutSelector.vue'
 import { usePresetTargets } from '../widgets/usePresetTargets'
 import { type AiEvaluationTargetId, useAiEvaluation } from '../ai-evaluation/use-ai-evaluation'
+import { consumeManualQueryRequest, manualQueryRequest } from '../manual-query-request'
 
 const { t } = useTranslation('renderer', { keyPrefix: 'toolkit.inGameSend.presets.aiEvaluation' })
 const { t: tSelection } = useTranslation('renderer', {
@@ -454,4 +455,19 @@ async function handleSendTarget(target: AiEvaluationTargetId) {
     message.error(t('sendFailed'))
   }
 }
+
+// 战绩页跳转：自动填入召唤师名并触发手动查询
+watch(
+  () => manualQueryRequest.current,
+  (request) => {
+    if (!request || request.preset !== 'ai-evaluation') {
+      return
+    }
+
+    consumeManualQueryRequest()
+    manual.input = request.riotId
+    void runManualEvaluation()
+  },
+  { immediate: true }
+)
 </script>

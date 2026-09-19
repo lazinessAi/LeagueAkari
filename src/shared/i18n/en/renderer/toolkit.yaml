@@ -524,6 +524,11 @@ toolkit:
         noGames: Not enough games for horse grade analysis
         resultLine: '{{name}}: {{grade}}·{{subLevel}} (score {{score}}, better than {{percentile}}% of players)'
         resultDetail: '{{grade}}·{{subLevel}} (score {{score}}, better than {{percentile}}% of players)'
+      manualQueryJump:
+        aiEvaluation: Jump to Haidou Evaluation manual query
+        horseGrade: Jump to Haidou Horse Grades manual query
+        aiEvaluationShort: AI
+        horseGradeShort: Horse
       customTemplate:
         label: Custom Template
         risk:

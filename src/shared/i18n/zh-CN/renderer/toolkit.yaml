@@ -524,6 +524,11 @@ toolkit:
         noGames: 对局数据不足，无法进行马种评定
         resultLine: '{{name}}：{{grade}}·{{subLevel}}（评分 {{score}}，超过 {{percentile}}% 的玩家）'
         resultDetail: '{{grade}}·{{subLevel}}（评分 {{score}}，超过 {{percentile}}% 的玩家）'
+      manualQueryJump:
+        aiEvaluation: 跳转到海斗评价手动查询
+        horseGrade: 跳转到海斗马种评价手动查询
+        aiEvaluationShort: 评价
+        horseGradeShort: 马种
       customTemplate:
         label: 自定义模板
         risk:

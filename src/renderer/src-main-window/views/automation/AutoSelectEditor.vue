@@ -432,12 +432,34 @@
             v-if="currentPickConfig.acceptChampionSwapFromFriendsEnabled"
             setting-id="automation.champ-select.champion-swap.friends"
             :label="t('automation.champSelect.championSwap.friends.label')"
-            :label-description="t('automation.champSelect.championSwap.friends.description')"
             :label-width="260"
-            control-full-line
             align="start"
           >
-            <div class="w-full">
+            <template #labelDescription>
+              <div>
+                {{ t('automation.champSelect.championSwap.friends.description') }}
+              </div>
+              <div class="mt-2">
+                <NScrollbar v-if="championSwapWhitelist.length > 0" class="max-h-40">
+                  <div class="flex flex-wrap gap-1.5 pr-1">
+                    <NTag
+                      v-for="entry in championSwapWhitelist"
+                      :key="entry.summonerId"
+                      size="small"
+                      :bordered="false"
+                      closable
+                      @close="removeFromChampionSwapWhitelist(entry.summonerId)"
+                    >
+                      {{ entry.name }}
+                    </NTag>
+                  </div>
+                </NScrollbar>
+                <div v-else class="text-[13px] text-black/50 dark:text-white/50">
+                  {{ t('automation.champSelect.championSwap.friends.emptyHint') }}
+                </div>
+              </div>
+            </template>
+            <div class="w-full max-w-100">
               <div
                 v-if="!lcs.isConnected"
                 class="flex h-20 items-center justify-center rounded-md bg-black/5 p-2 text-center text-[13px] text-black/50 dark:bg-white/5 dark:text-white/50"
@@ -450,7 +472,7 @@
                   clearable
                   size="small"
                   :placeholder="t('automation.champSelect.championSwap.friends.searchPlaceholder')"
-                  class="mb-2 max-w-72"
+                  class="mb-2"
                   @update:value="handleFriendSearchUpdate"
                   @compositionstart="handleFriendSearchCompositionStart"
                   @compositionend="handleFriendSearchCompositionEnd"
@@ -465,7 +487,13 @@
                     <div
                       v-for="friend in filteredSortedFriends"
                       :key="friend.puuid"
-                      class="flex items-center gap-3 rounded-md border border-black/10 py-1.5 pr-4 pl-2.5 dark:border-white/10"
+                      class="flex cursor-pointer items-center gap-3 rounded-md border py-1.5 pr-4 pl-2.5 transition-colors"
+                      :class="
+                        isChampionSwapFriend(friend.summonerId)
+                          ? 'border-akari-500/35 bg-akari-500/7 hover:bg-akari-500/12 dark:border-akari-400/30 dark:bg-akari-400/10 dark:hover:bg-akari-400/16'
+                          : 'border-black/10 hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/5'
+                      "
+                      @click="toggleChampionSwapFriend(friend)"
                     >
                       <div class="relative">
                         <LcuImage
@@ -491,6 +519,7 @@
                       <NCheckbox
                         :checked="isChampionSwapFriend(friend.summonerId)"
                         @update:checked="() => toggleChampionSwapFriend(friend)"
+                        @click.stop
                       />
                     </div>
                     <div
@@ -569,6 +598,7 @@ import {
   NScrollbar,
   NSwitch,
   NTabPane,
+  NTag,
   NTabs,
   NTooltip
 } from 'naive-ui'
@@ -634,10 +664,24 @@ const filteredSortedFriends = computed(() => {
   })
 })
 
+const championSwapWhitelist = computed(
+  () => currentPickConfig.value?.championSwapFriendWhitelist ?? []
+)
+
 const isChampionSwapFriend = (summonerId: number) => {
-  return (currentPickConfig.value?.championSwapFriendWhitelist ?? []).some(
-    (entry) => entry.summonerId === summonerId
-  )
+  return championSwapWhitelist.value.some((entry) => entry.summonerId === summonerId)
+}
+
+const removeFromChampionSwapWhitelist = (summonerId: number) => {
+  if (!currentGroup.value) {
+    return
+  }
+
+  as.setPickConfig(currentGroup.value.groupId, {
+    championSwapFriendWhitelist: championSwapWhitelist.value.filter(
+      (entry) => entry.summonerId !== summonerId
+    )
+  })
 }
 
 const toggleChampionSwapFriend = (friend: Friend) => {
