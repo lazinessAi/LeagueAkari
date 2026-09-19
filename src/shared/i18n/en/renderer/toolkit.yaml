@@ -522,6 +522,8 @@ toolkit:
         notice: 'Experimental feature: currently only supports ARAM Mayhem game data analysis. Other modes are not supported yet.'
         description: 'Assigns horse grades based on the normal distribution of all participants in the selected players last 100 ARAM Mayhem games. Dry run fetches the data and analyzes; sending unlocks after all players are done.'
         noGames: Not enough games for horse grade analysis
+        resultLine: '{{name}}: {{grade}}·{{subLevel}} (score {{score}}, better than {{percentile}}% of players)'
+        resultDetail: '{{grade}}·{{subLevel}} (score {{score}}, better than {{percentile}}% of players)'
       customTemplate:
         label: Custom Template
         risk:

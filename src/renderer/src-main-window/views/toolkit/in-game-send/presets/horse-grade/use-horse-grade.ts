@@ -8,11 +8,12 @@ import { useLeagueClientStore } from '@renderer-shared/shards/league-client/stor
 import { useOngoingGameStore } from '@renderer-shared/shards/ongoing-game/store'
 import { SgpRenderer } from '@renderer-shared/shards/sgp'
 import { useSgpStore } from '@renderer-shared/shards/sgp/store'
+import type { InGameSendPresetTargetShortcuts } from '@shared/shards/in-game-send'
 import { useTranslation } from 'i18next-vue'
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 
+import type { AramMayhemGameJson } from '../ai-evaluation/aggregate'
 import { fetchAramMayhemGameSummaries } from '../ai-evaluation/fetch-player-games'
-import type { HorseGradeGameJson } from '../ai-evaluation/horse-grade'
 import { buildHorseGradeReport } from '../ai-evaluation/horse-grade'
 import { createShortcutTargetIds } from '../data/shared'
 import type { GamePhase, PresetTargetId, PreviewedLines } from '../types'
@@ -20,6 +21,9 @@ import type { GamePhase, PresetTargetId, PreviewedLines } from '../types'
 export type HorseGradeTargetId = PresetTargetId
 
 const SENDABLE_PHASES: GamePhase[] = ['lobby', 'champ-select', 'in-game']
+
+/** 与海斗评价一致的低样本门槛 */
+const HORSE_GRADE_MIN_SAMPLE = 10
 
 function getHorseGradeShortcutTargetId(target: PresetTargetId) {
   return `in-game-send-main/horse-grade/${target}`
@@ -43,11 +47,11 @@ function parseRiotId(input: string): { gameName: string; tagLine: string } | nul
   return { gameName, tagLine }
 }
 
-/**
- * 海斗马种评价的作用域适配器：与海斗评价同构，复用预设 tab 的按钮/样式/交互。
- */
 export function useHorseGrade() {
   const { t } = useTranslation('renderer', {
+    keyPrefix: 'toolkit.inGameSend.presets.horseGrade'
+  })
+  const { t: tAi } = useTranslation('renderer', {
     keyPrefix: 'toolkit.inGameSend.presets.aiEvaluation'
   })
 
@@ -80,7 +84,7 @@ export function useHorseGrade() {
   const canSend = computed(() => SENDABLE_PHASES.includes(gamePhase.value))
 
   const shortcutTargetIds = createShortcutTargetIds(getHorseGradeShortcutTargetId)
-  const shortcuts = computed(() => ({
+  const shortcuts = computed<InGameSendPresetTargetShortcuts>(() => ({
     ...igsStore.settings.horseGradeTargetShortcuts
   }))
 
@@ -88,13 +92,89 @@ export function useHorseGrade() {
     return igs.setHorseGradeTargetShortcut(targetId, shortcutId)
   }
 
-  const running = ref(false)
-  const generatedLines = reactive<Record<HorseGradeTargetId, PreviewedLines | null>>({
-    friendly: null,
-    enemy: null,
-    all: null
+  function formatPlayerName(puuid: string): string {
+    const summoner = ogs.summoner[puuid]
+
+    if (summoner?.gameName) {
+      return summoner.tagLine ? `${summoner.gameName}#${summoner.tagLine}` : summoner.gameName
+    }
+
+    return summoner?.displayName || puuid.slice(0, 8)
+  }
+
+  // ===== 对局玩家勾选 =====
+  const selection = reactive<Record<string, boolean>>({})
+
+  const allGamePlayers = computed(() => {
+    const ownPuuid = lcStore.summoner.me?.puuid
+    const ownBucket = Object.entries(ogs.teams).find(
+      ([, members]) => ownPuuid && members.includes(ownPuuid)
+    )
+    const ownSet = new Set(ownBucket?.[1] ?? [])
+
+    const seen = new Set<string>()
+    const players: {
+      puuid: string
+      name: string
+      gameName: string
+      tagLine: string
+      isOwnTeam: boolean
+      championId: number | null
+      profileIconId: number | null
+    }[] = []
+
+    for (const members of Object.values(ogs.teams)) {
+      for (const puuid of members) {
+        if (!puuid || seen.has(puuid)) {
+          continue
+        }
+
+        seen.add(puuid)
+        const summoner = ogs.summoner[puuid]
+        players.push({
+          puuid,
+          name: formatPlayerName(puuid),
+          gameName: summoner?.gameName || '',
+          tagLine: summoner?.tagLine || '',
+          isOwnTeam: ownSet.has(puuid),
+          championId: ogs.championSelections[puuid] ?? null,
+          profileIconId: summoner?.profileIconId ?? null
+        })
+      }
+    }
+
+    return players
   })
-  const previewedRaw = ref<PreviewedLines | null>(null)
+
+  watch(
+    allGamePlayers,
+    (players) => {
+      for (const player of players) {
+        if (!(player.puuid in selection)) {
+          selection[player.puuid] = true
+        }
+      }
+    },
+    { immediate: true }
+  )
+
+  const selectedGamePlayerCount = computed(
+    () => allGamePlayers.value.filter((p) => selection[p.puuid] !== false).length
+  )
+
+  function isPlayerSelected(puuid: string) {
+    return selection[puuid] !== false
+  }
+
+  function setPlayerSelected(puuid: string, checked: boolean) {
+    selection[puuid] = checked
+  }
+
+  function setAllPlayersSelected(checked: boolean) {
+    for (const player of allGamePlayers.value) {
+      selection[player.puuid] = checked
+    }
+  }
 
   function getTargetPlayers(target: HorseGradeTargetId): { puuid: string; name: string }[] {
     const ownPuuid = lcStore.summoner.me?.puuid
@@ -107,6 +187,7 @@ export function useHorseGrade() {
     }
 
     const [ownBucketId, ownBucketMembers] = ownBucket
+    // LOBBY / TEAM-ALL 是"全员同队"桶，没有敌方
     const isGlobalBucket = (id: string) => id === 'LOBBY' || id === 'TEAM-ALL'
 
     let puuids: string[]
@@ -131,17 +212,53 @@ export function useHorseGrade() {
         })
     }
 
-    return puuids.filter(Boolean).map((puuid) => ({ puuid, name: formatPlayerName(puuid) }))
+    return puuids
+      .filter(Boolean)
+      .filter((puuid) => selection[puuid] !== false)
+      .map((puuid) => ({ puuid, name: formatPlayerName(puuid) }))
   }
 
-  function formatPlayerName(puuid: string): string {
-    const summoner = ogs.summoner[puuid]
+  // ===== 马种评定执行 =====
+  const running = ref(false)
+  const generatedLines = reactive<Record<HorseGradeTargetId, PreviewedLines | null>>({
+    friendly: null,
+    enemy: null,
+    all: null
+  })
+  const previewedLinesRaw = ref<PreviewedLines | null>(null)
+  const previewedLines = computed(() => previewedLinesRaw.value)
 
-    if (summoner?.gameName) {
-      return summoner.tagLine ? `${summoner.gameName}#${summoner.tagLine}` : summoner.gameName
+  /** 名字展示策略（与海斗评价共用同一设置），返回 puuid -> 展示名 */
+  function resolveDisplayNames(players: { puuid: string; name: string }[]): Map<string, string> {
+    const strategy = igsStore.settings.aiEvaluationNameDisplayStrategy
+    const championCounts = new Map<number, number>()
+
+    if (strategy !== 'preferName') {
+      for (const player of players) {
+        const championId = ogs.championSelections[player.puuid]
+        if (championId) {
+          championCounts.set(championId, (championCounts.get(championId) ?? 0) + 1)
+        }
+      }
     }
 
-    return summoner?.displayName || puuid.slice(0, 8)
+    const displayNames = new Map<string, string>()
+    for (const player of players) {
+      const championId = ogs.championSelections[player.puuid] ?? null
+      const championName = championId ? lcStore.gameData.champions[championId]?.name : undefined
+      const noDuplicate = championId && (championCounts.get(championId) ?? 0) <= 1
+
+      let displayName = player.name
+      if (strategy === 'preferChampionName' && championName && noDuplicate) {
+        displayName = championName
+      } else if (strategy === 'championNameWithName' && championName && noDuplicate) {
+        displayName = `${championName}（${player.name}）`
+      }
+
+      displayNames.set(player.puuid, displayName)
+    }
+
+    return displayNames
   }
 
   async function dryRun(target: HorseGradeTargetId): Promise<void> {
@@ -154,37 +271,34 @@ export function useHorseGrade() {
       return
     }
 
+    const displayNames = resolveDisplayNames(players)
+
     running.value = true
     try {
-      // 并发拉取全部选中玩家的战绩
+      // 并发拉取全部选中玩家的近 100 场战绩
       const gameResults = await Promise.all(
         players.map((player) =>
           fetchAramMayhemGameSummaries(sgp, sgpStore.availability.sgpServerId, player.puuid)
             .then((games) => ({ player, games }))
-            .catch(() => ({ player, games: [] as HorseGradeGameJson[] }))
+            .catch(() => ({ player, games: [] as AramMayhemGameJson[] }))
         )
       )
 
-      // 跨玩家去重对局
-      const allGames: import('../ai-evaluation/aggregate').AramMayhemGameJson[] = []
+      // 跨玩家按 gameId 去重后合并：所有选中玩家的对局共同构成总体基底
+      const pooledGames: AramMayhemGameJson[] = []
       const seenGameIds = new Set<number>()
       for (const { games } of gameResults) {
         for (const game of games) {
           if (!seenGameIds.has(game.gameId)) {
             seenGameIds.add(game.gameId)
-            allGames.push(game)
+            pooledGames.push(game)
           }
         }
       }
 
-      const itemNames: Record<number, string> = {}
-      for (const [id, item] of Object.entries(lcStore.gameData.items)) {
-        itemNames[Number(id)] = item.name
-      }
-
       const report = buildHorseGradeReport({
         players,
-        games: allGames,
+        games: pooledGames,
         champions: lcStore.gameData.champions
       })
 
@@ -193,18 +307,35 @@ export function useHorseGrade() {
         lines.push(t('noGames'))
       } else {
         for (const player of players) {
-          // 有参战记录的玩家才显示马种
+          const displayName = displayNames.get(player.puuid) ?? player.name
           const result = report.players.find((p) => p.puuid === player.puuid)
+
+          if (!result || result.metrics.gameCount === 0) {
+            lines.push(`${displayName}：${tAi('playerStatus.noData')}`)
+            continue
+          }
+
+          if (result.metrics.gameCount < HORSE_GRADE_MIN_SAMPLE) {
+            lines.push(
+              `${displayName}：${tAi('lowSampleReply', { count: result.metrics.gameCount })}`
+            )
+            continue
+          }
+
           lines.push(
-            result
-              ? `${player.name}：${result.grade}·${result.subLevel}（评分 ${result.score}，超过 ${result.percentile}% 的玩家）`
-              : `${player.name}：${t('playerStatus.noData')}`
+            t('resultLine', {
+              name: displayName,
+              grade: result.grade,
+              subLevel: result.subLevel,
+              score: result.score,
+              percentile: result.percentile
+            })
           )
         }
       }
 
       generatedLines[target] = { targetId: target, createdAt: Date.now(), lines }
-      previewedRaw.value = { targetId: target, createdAt: Date.now(), lines }
+      previewedLinesRaw.value = { targetId: target, createdAt: Date.now(), lines }
     } finally {
       running.value = false
     }
@@ -215,6 +346,7 @@ export function useHorseGrade() {
       return false
     }
 
+    // 未试运行的目标先生成再发送
     if (!generatedLines[target]) {
       await dryRun(target)
     }
@@ -227,10 +359,21 @@ export function useHorseGrade() {
     return igs.sendLines(lines)
   }
 
-  // ===== 手动查询（单玩家马种） =====
+  function closePreview() {
+    previewedLinesRaw.value = null
+  }
+
+  // ===== 手动查询单个玩家 =====
   const manual = reactive({
     input: '',
-    entry: null as { name: string; displayName: string; status: string; text: string } | null,
+    sendTarget: 'friendly' as HorseGradeTargetId,
+    entry: null as {
+      name: string
+      displayName: string
+      status: 'pending' | 'fetching' | 'analyzing' | 'done' | 'no-data' | 'error'
+      reply: string
+      errorMessage: string
+    } | null,
     running: false,
     errorMessage: ''
   })
@@ -242,7 +385,7 @@ export function useHorseGrade() {
 
     const parsed = parseRiotId(manual.input)
     if (!parsed) {
-      manual.errorMessage = t('manual.inputInvalid')
+      manual.errorMessage = tAi('manual.inputInvalid')
       return
     }
 
@@ -251,7 +394,8 @@ export function useHorseGrade() {
       name: `${parsed.gameName}#${parsed.tagLine}`,
       displayName: `${parsed.gameName}#${parsed.tagLine}`,
       status: 'fetching',
-      text: ''
+      reply: '',
+      errorMessage: ''
     }
     manual.running = true
 
@@ -259,29 +403,39 @@ export function useHorseGrade() {
       let summoner: { puuid: string; gameName: string; tagLine: string; level: number } | null =
         null
       try {
-        const s = await searchSummonerByAlias(parsed.gameName, parsed.tagLine, 'lcu')
-        summoner = s
-          ? { puuid: s.puuid, gameName: s.gameName, tagLine: s.tagLine, level: s.level }
+        const lcuSummoner = await searchSummonerByAlias(parsed.gameName, parsed.tagLine, 'lcu')
+        summoner = lcuSummoner
+          ? {
+              puuid: lcuSummoner.puuid,
+              gameName: lcuSummoner.gameName,
+              tagLine: lcuSummoner.tagLine,
+              level: lcuSummoner.level
+            }
           : null
       } catch {
         summoner = null
       }
 
       if (!summoner && sgpReady.value) {
-        const s = await searchSummonerByAlias(
+        const sgpSummoner = await searchSummonerByAlias(
           parsed.gameName,
           parsed.tagLine,
           'sgp',
           sgpStore.availability.sgpServerId
         ).catch(() => null)
-        summoner = s
-          ? { puuid: s.puuid, gameName: s.gameName, tagLine: s.tagLine, level: s.level }
+        summoner = sgpSummoner
+          ? {
+              puuid: sgpSummoner.puuid,
+              gameName: sgpSummoner.gameName,
+              tagLine: sgpSummoner.tagLine,
+              level: sgpSummoner.level
+            }
           : null
       }
 
       if (!summoner) {
         manual.entry.status = 'error'
-        manual.errorMessage = t('manual.notFound')
+        manual.entry.errorMessage = tAi('manual.notFound')
         return
       }
 
@@ -300,12 +454,8 @@ export function useHorseGrade() {
 
       if (!games.length) {
         manual.entry.status = 'no-data'
+        manual.entry.reply = tAi('playerStatus.noData')
         return
-      }
-
-      const itemNames: Record<number, string> = {}
-      for (const [id, item] of Object.entries(lcStore.gameData.items)) {
-        itemNames[Number(id)] = item.name
       }
 
       const report = buildHorseGradeReport({
@@ -316,24 +466,47 @@ export function useHorseGrade() {
 
       if (!report) {
         manual.entry.status = 'no-data'
+        manual.entry.reply = t('noGames')
         return
       }
 
-      const player = report.players[0]
-      if (player.metrics.gameCount < 10) {
+      const result = report.players[0]
+
+      if (result.metrics.gameCount === 0) {
+        manual.entry.reply = tAi('playerStatus.noData')
         manual.entry.status = 'done'
-        manual.entry.text = t('lowSampleReply', { count: player.metrics.gameCount })
         return
       }
 
-      manual.entry.text = `${player.grade}·${player.subLevel}（评分 ${player.score}，超过 ${player.percentile}% 的玩家，参与 ${player.metrics.gameCount} 场）`
+      if (result.metrics.gameCount < HORSE_GRADE_MIN_SAMPLE) {
+        manual.entry.reply = tAi('lowSampleReply', { count: result.metrics.gameCount })
+        manual.entry.status = 'done'
+        return
+      }
+
+      manual.entry.reply = t('resultDetail', {
+        grade: result.grade,
+        subLevel: result.subLevel,
+        score: result.score,
+        percentile: result.percentile
+      })
       manual.entry.status = 'done'
     } catch (error) {
       manual.entry.status = 'error'
-      manual.errorMessage = error instanceof Error ? error.message : String(error)
+      manual.entry.errorMessage = error instanceof Error ? error.message : String(error)
     } finally {
       manual.running = false
     }
+  }
+
+  async function sendManualReply() {
+    const entry = manual.entry
+
+    if (!entry || entry.status !== 'done' || !entry.reply) {
+      return false
+    }
+
+    return igs.sendLines([`${entry.displayName || entry.name}：${entry.reply}`])
   }
 
   // ===== 快捷键 =====
@@ -351,31 +524,39 @@ export function useHorseGrade() {
     shortcuts,
     gamePhase,
     canSend,
-    previewedLines: computed(() => previewedRaw.value),
+    previewedLines,
     setShortcut,
     send,
     dryRun,
-    closePreview: () => {
-      previewedRaw.value = null
-    },
+    closePreview,
 
-    // 扩展
+    // 马种评价扩展
     running,
     generatedLines,
     sgpReady,
+    igs,
+    igsStore,
+    selection,
+    allGamePlayers,
+    getTargetPlayers,
+    selectedGamePlayerCount,
+    isPlayerSelected,
+    setPlayerSelected,
+    setAllPlayersSelected,
     manual,
     manualRunning: computed(() => manual.running),
     runManualEvaluation,
+    sendManualReply,
     commonDisabledReason
   }
 
   function commonDisabledReason(): string {
     if (running.value) {
-      return t('reasons.running')
+      return tAi('reasons.running')
     }
 
     if (!sgpReady.value) {
-      return t('reasons.sgpUnavailable')
+      return tAi('reasons.sgpUnavailable')
     }
 
     return ''
