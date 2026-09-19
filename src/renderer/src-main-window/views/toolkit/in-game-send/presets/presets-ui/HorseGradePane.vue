@@ -317,6 +317,7 @@ const {
   gamePhase,
   running,
   previewedLines,
+  canSendNow,
   allGamePlayers,
   selectedGamePlayerCount,
   isPlayerSelected,
@@ -380,6 +381,18 @@ function sendDisabledReason() {
 
   if (!previewedLines.value) {
     return tAi('reasons.notReady')
+  }
+
+  if (!canSendNow.value) {
+    if (gamePhase.value !== 'lobby' && gamePhase.value !== 'champ-select') {
+      if (gamePhase.value === 'in-game') {
+        return tAi('reasons.nativeUnavailable')
+      }
+
+      return tAi('reasons.unsendablePhase')
+    }
+
+    return tAi('reasons.noChatChannel')
   }
 
   return ''

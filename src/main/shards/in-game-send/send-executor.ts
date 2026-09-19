@@ -66,6 +66,7 @@ export class InGameSendExecutor {
 
     const normalizedLines = normalizeInGameSendLines(lines)
     if (!normalizedLines.length) {
+      logger.warn('Cannot send lines: no non-empty lines')
       return false
     }
 
@@ -74,6 +75,9 @@ export class InGameSendExecutor {
       ongoingGame.state.queryStage.phase !== 'lobby' &&
       ongoingGame.state.queryStage.phase !== 'in-game'
     ) {
+      logger.warn('Cannot send lines: unsupported gameflow phase', {
+        phase: ongoingGame.state.queryStage.phase
+      })
       return false
     }
 
@@ -112,6 +116,14 @@ export class InGameSendExecutor {
         : leagueClient.data.chat.conversations.customGame
 
     if (!conversation) {
+      logger.warn('Cannot send lines: no chat conversation available in current phase', {
+        phase,
+        // 普通匹配房间在进入英雄选择前不存在聊天通道，客户端本身也没有聊天框
+        availableConversations: {
+          championSelect: !!leagueClient.data.chat.conversations.championSelect,
+          customGame: !!leagueClient.data.chat.conversations.customGame
+        }
+      })
       return false
     }
 

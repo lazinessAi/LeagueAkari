@@ -1,5 +1,6 @@
 import { useSummonerFetch } from '@renderer-shared/composables/useSummonerFetch'
 import { useInstance } from '@renderer-shared/shards'
+import { useAppCommonStore } from '@renderer-shared/shards/app-common/store'
 import { InGameSendRenderer } from '@renderer-shared/shards/in-game-send'
 import { IN_GAME_SEND_MAIN_NAMESPACE } from '@renderer-shared/shards/in-game-send/context'
 import { useInGameSendStore } from '@renderer-shared/shards/in-game-send/store'
@@ -59,6 +60,7 @@ export function useHorseGrade() {
   const lcStore = useLeagueClientStore()
   const sgpStore = useSgpStore()
   const igsStore = useInGameSendStore()
+  const appCommonStore = useAppCommonStore()
   const sgp = useInstance(SgpRenderer)
   const igs = useInstance(InGameSendRenderer)
   const ipc = useInstance(AkariIpcRenderer)
@@ -82,6 +84,31 @@ export function useHorseGrade() {
   })
 
   const canSend = computed(() => SENDABLE_PHASES.includes(gamePhase.value))
+
+  /**
+   * 当前阶段是否真的存在可用的发送通道（与海斗评价一致）：
+   * 房间 / 英雄选择依赖 LCU 聊天会话（普通匹配房间在进入英雄选择前没有聊天通道），
+   * 游戏内依赖原生键盘模拟（需要管理员权限）。
+   */
+  const canSendNow = computed(() => {
+    if (!canSend.value) {
+      return false
+    }
+
+    if (gamePhase.value === 'in-game') {
+      return appCommonStore.nativeSupport.nativeInput.available
+    }
+
+    if (gamePhase.value === 'lobby') {
+      return !!lcStore.chat.conversations.customGame
+    }
+
+    if (gamePhase.value === 'champ-select') {
+      return !!lcStore.chat.conversations.championSelect
+    }
+
+    return false
+  })
 
   const shortcutTargetIds = createShortcutTargetIds(getHorseGradeShortcutTargetId)
   const shortcuts = computed<InGameSendPresetTargetShortcuts>(() => ({
@@ -342,7 +369,7 @@ export function useHorseGrade() {
   }
 
   async function send(target: HorseGradeTargetId): Promise<boolean> {
-    if (running.value || !canSend.value) {
+    if (running.value || !canSendNow.value) {
       return false
     }
 
@@ -524,6 +551,7 @@ export function useHorseGrade() {
     shortcuts,
     gamePhase,
     canSend,
+    canSendNow,
     previewedLines,
     setShortcut,
     send,
