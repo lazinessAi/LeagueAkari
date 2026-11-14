@@ -217,34 +217,10 @@ describe('InGameSendExecutor', () => {
     expect(nativeInputMock.instance.sendKey).not.toHaveBeenCalled()
   })
 
-  it.each(['unavailable', 'lobby', 'champ-select'])(
-    'sends always-check surrender only to the foreground game despite %s state',
-    async (phase) => {
-      const { context, chatSend } = createContext(phase)
-      const executor = new InGameSendExecutor(context)
-      await expect(executor.sendSurrender(new AbortController().signal, true)).resolves.toBe(true)
-      expect(nativeInputMock.instance.sendString).toHaveBeenCalledExactlyOnceWith('/ff')
-      expect(chatSend).not.toHaveBeenCalled()
-    }
-  )
-
-  it('does not bypass game detection for a normal surrender attempt', async () => {
+  it('does not send input when game detection is unavailable', async () => {
     const { context } = createContext('unavailable')
     const executor = new InGameSendExecutor(context)
-    await expect(executor.sendSurrender(new AbortController().signal)).resolves.toBe(false)
-    expect(nativeInputMock.instance.sendKey).not.toHaveBeenCalled()
-  })
-
-  it('still requires foreground and respects cancellation in always-check mode', async () => {
-    const { context } = createContext('unavailable', { foreground: false })
-    const executor = new InGameSendExecutor(context)
-    const abort = new AbortController()
-    await expect(executor.sendSurrender(abort.signal, true)).resolves.toBe(false)
-    context.isGameClientForeground = async () => {
-      abort.abort()
-      return true
-    }
-    await expect(executor.sendSurrender(abort.signal, true)).resolves.toBe(false)
+    await expect(executor.sendLines(['/ff'], new AbortController().signal)).resolves.toBe(false)
     expect(nativeInputMock.instance.sendKey).not.toHaveBeenCalled()
   })
 

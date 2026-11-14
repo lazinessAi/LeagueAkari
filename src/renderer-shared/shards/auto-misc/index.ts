@@ -49,10 +49,6 @@ export class AutoMiscRenderer implements IAkariShardInitDispose {
     return this._settingUtils.set(MAIN_SHARD_NAMESPACE, 'autoSurrenderRegion', region)
   }
 
-  setAutoSurrenderAlwaysCheck(enabled: boolean) {
-    return this._settingUtils.set(MAIN_SHARD_NAMESPACE, 'autoSurrenderAlwaysCheck', enabled)
-  }
-
   setAutoReplyText(text: string) {
     return this._settingUtils.set(MAIN_SHARD_NAMESPACE, 'autoReplyText', text)
   }

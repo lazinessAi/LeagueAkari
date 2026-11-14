@@ -12,7 +12,6 @@ export interface SurrenderOcrResult {
   text: string
   durationMs: number
   skipped: boolean
-  captureId: string | null
 }
 
 export class SurrenderOcrError extends Error {
@@ -91,8 +90,7 @@ export class SurrenderOcrExecutor {
           pending.resolve({
             text: message.text ?? '',
             durationMs: message.durationMs ?? 0,
-            skipped: message.skipped ?? false,
-            captureId: message.captureId ?? null
+            skipped: message.skipped ?? false
           })
         }
       })

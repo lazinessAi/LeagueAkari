@@ -192,9 +192,6 @@ automation:
     autoSurrender:
       title: Follow Surrender
       enabled: Enable
-      alwaysCheck:
-        label: Always Check
-        description: Check without waiting for game detection, including while spectating. Only the foreground League of Legends game window is recognized, with one attempt per game process. Spectating allows recognition testing but cannot surrender.
       description: While the game is in the foreground, recognize the yellow Chinese army surrender announcement in the chat area and immediately send /ff once. Any army name matches; vote counts are ignored. At most one attempt per game. Teammates still need to pass the vote.
       duration: 'Last recognition: {{ms}} ms'
       lastText: Last recognized text
@@ -218,7 +215,17 @@ automation:
         send-failed: Input did not finish after this game's surrender attempt. Please act manually.
       region:
         label: Chat Region
-        description: Percentages of the game window, defaulting to its bottom-left quadrant. Include complete chat messages. Adjust after changing chat position, font size, or resolution.
+        description: Select the area containing complete chat messages. Defaults to the bottom-left quarter of the game window. Adjust after moving chat or changing its font size.
+        canvasLabel: Chat recognition region preview. Drag to select or use arrow keys to move the selection.
+        schematic: Game window diagram
+        previewHint: Drag outside the selection to redraw. Drag the selection or its corners to move or resize it.
+        expand: Enlarge Preview
+        precise: Adjust Exact Values
+        pickerTitle: Select Chat Region
+        pickerHint: Include complete chat messages and avoid other game UI.
+        keyboardHint: Drag to draw, move, or resize at the corners. Arrow keys move the selection; hold Shift for larger steps.
+        cancel: Cancel
+        confirm: Save Selection
         x: Left
         y: Top
         width: Width

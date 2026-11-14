@@ -209,17 +209,14 @@ export class InGameSendMain implements IAkariShardInitDispose {
     this._ipcHandlers.register()
   }
 
-  async sendSurrender(signal: AbortSignal, alwaysCheck = false) {
+  async sendSurrender(signal: AbortSignal) {
     if (
       process.platform !== 'win32' ||
-      (!alwaysCheck &&
-        !AUTO_SURRENDER_GAME_PHASES.some(
-          (phase) => phase === this._leagueClient.data.gameflow.phase
-        ))
+      !AUTO_SURRENDER_GAME_PHASES.some((phase) => phase === this._leagueClient.data.gameflow.phase)
     ) {
       return false
     }
-    return this._sendExecutor.sendSurrender(signal, alwaysCheck)
+    return this._sendExecutor.sendLines(['/ff'], signal)
   }
 
   async onDispose() {}

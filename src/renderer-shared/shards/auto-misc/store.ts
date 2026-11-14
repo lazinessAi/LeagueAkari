@@ -9,7 +9,6 @@ import { shallowReactive } from 'vue'
 export const useAutoMiscStore = defineStore('shard:auto-misc-renderer', () => {
   const settings = shallowReactive({
     autoSurrenderEnabled: false,
-    autoSurrenderAlwaysCheck: false,
     autoSurrenderRegion: { ...DEFAULT_AUTO_SURRENDER_REGION },
     autoReplyEnabled: false,
     autoReplyEnableOnAway: false,

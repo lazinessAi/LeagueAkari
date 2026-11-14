@@ -192,9 +192,6 @@ automation:
     autoSurrender:
       title: 自动跟随投降
       enabled: 开启
-      alwaysCheck:
-        label: 始终检查
-        description: 开启后不等待进入游戏，观战或未识别到对局状态时也检查。仅识别前台的英雄联盟游戏窗口，每个游戏进程最多触发一次。观战可测试识别，但无法实际投降。
       description: 游戏处于前台时，识别聊天区域中黄色的“军团同意投降”提示，立即发送一次 /ff。不区分军团名称、不等待票数，每局最多尝试一次。需要中文游戏文本，投票仍需队友通过。
       duration: '最近识别：{{ms}} 毫秒'
       lastText: 最近识别到的文字
@@ -218,7 +215,17 @@ automation:
         send-failed: 本局已尝试发送，但自动输入未完成。请手动处理。
       region:
         label: 聊天区域
-        description: 相对于游戏窗口的百分比，默认使用四等分后的左下区域。请覆盖完整聊天消息；修改位置、字号或分辨率后可调整此区域。
+        description: 框选聊天消息所在的位置，请覆盖完整消息。默认使用游戏窗口左下四分之一区域；移动聊天框或更改字号后可重新调整。
+        canvasLabel: 聊天识别区域预览，可拖拽框选或用方向键移动选区
+        schematic: 游戏窗口示意图
+        previewHint: 拖拽空白处重新框选，拖动选区或四角调整位置与大小。
+        expand: 放大调整
+        precise: 精确数值调整
+        pickerTitle: 框选聊天区域
+        pickerHint: 框住完整聊天消息，尽量避开其他游戏界面。
+        keyboardHint: 支持拖拽框选、移动和四角缩放。方向键微调位置，Shift + 方向键加速。
+        cancel: 取消
+        confirm: 保存选区
         x: 左侧位置
         y: 顶部位置
         width: 宽度

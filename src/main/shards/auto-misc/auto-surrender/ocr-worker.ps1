@@ -43,7 +43,6 @@ using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 
 public static class AkariSurrenderCapture {
-  public static string CaptureId { get; private set; }
   [StructLayout(LayoutKind.Sequential)] struct Rect { public int Left, Top, Right, Bottom; }
   [StructLayout(LayoutKind.Sequential)] struct Point { public int X, Y; }
   [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
@@ -53,7 +52,6 @@ public static class AkariSurrenderCapture {
   [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
 
   public static Bitmap Capture(double x, double y, double width, double height) {
-    CaptureId = null;
     var window = GetForegroundWindow();
     uint pid;
     GetWindowThreadProcessId(window, out pid);
@@ -61,7 +59,6 @@ public static class AkariSurrenderCapture {
     try {
       using (var process = Process.GetProcessById((int)pid)) {
         if (!String.Equals(process.ProcessName, "League of Legends", StringComparison.OrdinalIgnoreCase)) return null;
-        CaptureId = pid.ToString() + ":" + process.StartTime.ToUniversalTime().Ticks.ToString();
       }
     } catch (ArgumentException) { return null; }
       catch (InvalidOperationException) { return null; }
@@ -153,7 +150,7 @@ while ($null -ne ($line = [Console]::ReadLine())) {
     $decoder = Await-Operation ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($randomAccess)) ([Windows.Graphics.Imaging.BitmapDecoder])
     $softwareBitmap = Await-Operation $decoder.GetSoftwareBitmapAsync() ([Windows.Graphics.Imaging.SoftwareBitmap])
     $result = Await-Operation $engine.RecognizeAsync($softwareBitmap) ([Windows.Media.Ocr.OcrResult])
-    Write-Result @{ id = $request.id; type = 'result'; text = $result.Text; durationMs = $timer.ElapsedMilliseconds; skipped = $false; captureId = [AkariSurrenderCapture]::CaptureId }
+    Write-Result @{ id = $request.id; type = 'result'; text = $result.Text; durationMs = $timer.ElapsedMilliseconds; skipped = $false }
   } catch {
     Write-Result @{ id = $request.id; type = 'error'; error = 'ocr-scan-failed' }
   } finally {

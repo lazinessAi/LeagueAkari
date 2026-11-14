@@ -53,10 +53,6 @@ export class AutoMiscMain implements IAkariShardInitDispose {
       AutoMiscMain.id,
       {
         autoSurrenderEnabled: { default: this.settings.autoSurrenderEnabled, schema: z.boolean() },
-        autoSurrenderAlwaysCheck: {
-          default: this.settings.autoSurrenderAlwaysCheck,
-          schema: z.boolean()
-        },
         autoSurrenderRegion: {
           default: this.settings.autoSurrenderRegion,
           schema: autoSurrenderRegionSchema
@@ -114,8 +110,7 @@ export class AutoMiscMain implements IAkariShardInitDispose {
       isAvailable: () => process.platform === 'win32' && NATIVE_SUPPORT.nativeInput.available,
       isGameForeground: () => this._gameClient.isGameClientForegroundCached(),
       createOcr: () => new SurrenderOcrExecutor(),
-      sendSurrender: (signal) =>
-        this._inGameSend.sendSurrender(signal, this.settings.autoSurrenderAlwaysCheck)
+      sendSurrender: (signal) => this._inGameSend.sendSurrender(signal)
     })
   }
 

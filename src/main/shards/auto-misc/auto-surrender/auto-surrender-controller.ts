@@ -19,7 +19,6 @@ interface AutoSurrenderDependencies {
 export class AutoSurrenderController {
   private _generation = 0
   private _attemptedGameId: number | null = null
-  private _attemptedCaptureId: string | null = null
   private _attemptError: AutoSurrenderError | null = null
   private _timer: ReturnType<typeof setTimeout> | null = null
   private _ocr: ReturnType<AutoSurrenderDependencies['createOcr']> | null = null
@@ -36,15 +35,14 @@ export class AutoSurrenderController {
     this._unwatch = this._context.mobxUtils.reaction(
       () => ({
         active: this._canMonitor(),
-        alwaysCheck: this._context.settings.autoSurrenderAlwaysCheck,
-        gameId: this._context.settings.autoSurrenderAlwaysCheck ? null : this._gameId,
+        gameId: this._gameId,
         region: { ...this._context.settings.autoSurrenderRegion }
       }),
       () => {
         this._stop()
         this._state.update({ status: 'idle', error: null })
         if (!this._canMonitor()) return
-        if (!this._context.settings.autoSurrenderAlwaysCheck && this._hasAttempted(null)) {
+        if (this._attemptedGameId === this._gameId) {
           this._state.update({
             status: this._attemptError ? 'error' : 'triggered',
             error: this._attemptError
@@ -76,21 +74,11 @@ export class AutoSurrenderController {
   private _canMonitor() {
     return (
       this._context.settings.autoSurrenderEnabled &&
-      (this._context.settings.autoSurrenderAlwaysCheck ||
-        (AUTO_SURRENDER_GAME_PHASES.some(
-          (phase) => phase === this._context.leagueClient.data.gameflow.phase
-        ) &&
-          this._gameId !== null &&
-          this._gameId > 0))
-    )
-  }
-
-  private _hasAttempted(captureId: string | null) {
-    return (
-      (captureId !== null && captureId === this._attemptedCaptureId) ||
-      (!this._context.settings.autoSurrenderAlwaysCheck &&
-        this._gameId !== null &&
-        this._gameId === this._attemptedGameId)
+      AUTO_SURRENDER_GAME_PHASES.some(
+        (phase) => phase === this._context.leagueClient.data.gameflow.phase
+      ) &&
+      this._gameId !== null &&
+      this._gameId > 0
     )
   }
 
@@ -113,30 +101,19 @@ export class AutoSurrenderController {
     try {
       const result = await this._ocr!.scan(this._context.settings.autoSurrenderRegion)
       if (!this._isCurrent(generation)) return
-      const attempted = !result.skipped && this._hasAttempted(result.captureId)
       this._state.update({
-        status: result.skipped
-          ? 'paused'
-          : attempted
-            ? this._attemptError
-              ? 'error'
-              : 'triggered'
-            : 'watching',
-        error: attempted ? this._attemptError : null,
+        status: result.skipped ? 'paused' : 'watching',
         lastText: result.skipped ? this._state.lastText : result.text,
         lastScanDurationMs: result.skipped ? this._state.lastScanDurationMs : result.durationMs
       })
-      if (!result.skipped && !attempted && matchesSurrenderMessage(result.text)) {
+      if (!result.skipped && matchesSurrenderMessage(result.text)) {
         const foreground = await this._dependencies.isGameForeground()
         if (!this._isCurrent(generation)) return
         if (foreground) {
           // Consume the game before awaiting input: duplicate OCR frames/toggle changes cannot resend.
           this._attemptedGameId = this._gameId
-          this._attemptedCaptureId = result.captureId
-          if (!this._context.settings.autoSurrenderAlwaysCheck) {
-            this._ocr?.dispose()
-            this._ocr = null
-          }
+          this._ocr?.dispose()
+          this._ocr = null
           this._context.logger.info('Surrender message detected; sending /ff', {
             gameId: this._gameId,
             scanDurationMs: result.durationMs
@@ -153,7 +130,7 @@ export class AutoSurrenderController {
             status: sent ? 'triggered' : 'error',
             error: this._attemptError
           })
-          if (!this._context.settings.autoSurrenderAlwaysCheck) return
+          return
         }
       }
       if (this._isCurrent(generation)) {

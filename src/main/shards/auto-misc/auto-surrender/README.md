@@ -18,17 +18,16 @@ Toggling the switch cannot resend in a consumed game. A new game ID arms it agai
 one attempt per game within the running Akari process, not across application restarts. Input may
 still fail and teammates must pass the vote before the game's own deadline.
 
-The optional **Always Check** switch bypasses gameflow and game-ID requirements for both recognition
-and `/ff` keyboard input. It still captures and sends only while the League of Legends game window
-is foreground. This supports spectator recognition tests and missing LCU state; spectating itself
-cannot surrender. In this mode the worker keeps scanning through stage changes and after a match.
-The captured process ID plus start time identifies a game process, preventing repeated attempts
-even after toggling settings and allowing a new process to arm without a game ID. The option is
-disabled by default and persisted. Disabling it cancels pending recognition/input immediately.
+Recognition requires an active game/end-transition phase and a valid game ID. Spectator mode or
+missing gameflow state does not start capture or input. Previously saved always-check preferences
+are no longer registered or read and cannot bypass these requirements.
 
 The screenshot must include the visible chat announcement. Divide the game window into four equal
 quadrants: the default region is the bottom-left quadrant (x 0%, y 50%, width 50%, height 50%).
-Users can adjust this for relocated chat. Fullscreen
+Users can draw, move, or resize the selection on the settings preview, or enlarge the editor.
+The labeled game window diagram supports selection, keyboard movement, and exact numeric adjustments.
+Only percentage coordinates are persisted. Cancel leaves settings unchanged.
+Fullscreen
 capture, native input, actual game timing, and the packaged app still need an in-game smoke check.
 
 ## Verify recognition without sending input

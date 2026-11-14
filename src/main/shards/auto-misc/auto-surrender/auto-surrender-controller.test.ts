@@ -19,8 +19,7 @@ function deferred<T>() {
 const announcement: SurrenderOcrResult = {
   text: '16:30 蓝 色 军 团 同 意 投 降 ! 4 票 赞 成 , 0 票 反 对 。',
   durationMs: 153,
-  skipped: false,
-  captureId: '10:1000'
+  skipped: false
 }
 
 function createHarness(
@@ -28,13 +27,11 @@ function createHarness(
     enabled?: boolean
     phase?: string
     available?: boolean
-    alwaysCheck?: boolean
     noSession?: boolean
   } = {}
 ) {
   const settings = new AutoMiscSettings()
   settings.autoSurrenderEnabled = options.enabled ?? true
-  settings.autoSurrenderAlwaysCheck = options.alwaysCheck ?? false
   const gameflow = observable({
     phase: options.phase ?? 'InProgress',
     session: options.noSession ? null : { gameData: { gameId: 1 } }
@@ -93,15 +90,18 @@ describe('automatic surrender lifecycle', () => {
     vi.useRealTimers()
   })
 
-  it.each([{ enabled: false }, { phase: 'WatchInProgress' }, { available: false }])(
-    'does not start capture/input when unavailable: %j',
-    async (options) => {
-      harness = createHarness(options)
-      await vi.advanceTimersByTimeAsync(1000)
-      expect(harness.dependencies.createOcr).not.toHaveBeenCalled()
-      expect(harness.dependencies.sendSurrender).not.toHaveBeenCalled()
-    }
-  )
+  it.each([
+    { enabled: false },
+    { phase: 'WatchInProgress' },
+    { phase: 'None' },
+    { noSession: true },
+    { available: false }
+  ])('does not start capture/input when unavailable: %j', async (options) => {
+    harness = createHarness(options)
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(harness.dependencies.createOcr).not.toHaveBeenCalled()
+    expect(harness.dependencies.sendSurrender).not.toHaveBeenCalled()
+  })
 
   it('ignores a skipped frame even if it contains stale text', async () => {
     harness = createHarness()
@@ -109,60 +109,6 @@ describe('automatic surrender lifecycle', () => {
     await vi.advanceTimersByTimeAsync(0)
     expect(harness.state.status).toBe('paused')
     expect(harness.dependencies.sendSurrender).not.toHaveBeenCalled()
-  })
-
-  it('monitors and triggers in spectator mode without a game session when always-check is enabled', async () => {
-    harness = createHarness({ phase: 'WatchInProgress', noSession: true, alwaysCheck: true })
-    harness.result.resolve(announcement)
-    await vi.advanceTimersByTimeAsync(500)
-    expect(harness.dependencies.sendSurrender).toHaveBeenCalledTimes(1)
-    expect(harness.state.status).toBe('triggered')
-    runInAction(() => {
-      harness!.settings.autoSurrenderEnabled = false
-    })
-    runInAction(() => {
-      harness!.settings.autoSurrenderEnabled = true
-    })
-    await vi.advanceTimersByTimeAsync(500)
-    expect(harness.dependencies.sendSurrender).toHaveBeenCalledTimes(1)
-  })
-
-  it('rearms for a new game process without a game ID and ignores LCU stage changes', async () => {
-    harness = createHarness({ phase: 'None', noSession: true, alwaysCheck: true })
-    harness.result.resolve(announcement)
-    await vi.advanceTimersByTimeAsync(0)
-    runInAction(() => {
-      harness!.gameflow.phase = 'WatchInProgress'
-    })
-    expect(harness.dependencies.createOcr).toHaveBeenCalledTimes(1)
-    harness.ocr.scan.mockResolvedValue({ ...announcement, captureId: '20:2000' })
-    await vi.advanceTimersByTimeAsync(150)
-    expect(harness.dependencies.sendSurrender).toHaveBeenCalledTimes(2)
-    await vi.advanceTimersByTimeAsync(500)
-    expect(harness.dependencies.sendSurrender).toHaveBeenCalledTimes(2)
-  })
-
-  it('drops pending spectator recognition when always-check is turned off', async () => {
-    harness = createHarness({ phase: 'WatchInProgress', noSession: true, alwaysCheck: true })
-    await vi.advanceTimersByTimeAsync(0)
-    runInAction(() => {
-      harness!.settings.autoSurrenderAlwaysCheck = false
-    })
-    harness.result.resolve(announcement)
-    await vi.advanceTimersByTimeAsync(0)
-    expect(harness.state.status).toBe('idle')
-    expect(harness.dependencies.sendSurrender).not.toHaveBeenCalled()
-  })
-
-  it('does not resend when switching to always-check after a normal surrender attempt', async () => {
-    harness = createHarness()
-    harness.result.resolve(announcement)
-    await vi.advanceTimersByTimeAsync(0)
-    runInAction(() => {
-      harness!.settings.autoSurrenderAlwaysCheck = true
-    })
-    await vi.advanceTimersByTimeAsync(500)
-    expect(harness.dependencies.sendSurrender).toHaveBeenCalledTimes(1)
   })
 
   it('reports an input failure and does not retry it', async () => {
@@ -197,7 +143,6 @@ describe('automatic surrender lifecycle', () => {
     harness = createHarness()
     harness.result.resolve(announcement)
     await vi.advanceTimersByTimeAsync(0)
-    harness.ocr.scan.mockResolvedValue({ ...announcement, captureId: '20:2000' })
     runInAction(() => {
       harness!.gameflow.session!.gameData.gameId = 2
     })

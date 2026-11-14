@@ -972,13 +972,6 @@ const targetDefinitions = [
     descriptionKey: 'automation.misc.autoSurrender.region.description'
   },
   {
-    id: 'automation.misc.auto-surrender.always-check',
-    route: { name: 'automation', section: 'misc' },
-    parentId: 'automation.misc.auto-surrender',
-    labelKey: 'automation.misc.autoSurrender.alwaysCheck.label',
-    descriptionKey: 'automation.misc.autoSurrender.alwaysCheck.description'
-  },
-  {
     id: 'automation.misc.auto-reply',
     route: { name: 'automation', section: 'misc' },
     labelKey: 'automation.misc.autoReply.title',

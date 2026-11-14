@@ -57,15 +57,6 @@ export class InGameSendExecutor {
    * 给后续预设（preset）执行使用。
    */
   async sendLines(lines: string[], signal?: AbortSignal) {
-    return this._sendLines(lines, signal)
-  }
-
-  async sendSurrender(signal: AbortSignal, alwaysCheck = false) {
-    // Always-check OCR can identify a foreground game even without LCU gameflow state.
-    return this._sendLines(['/ff'], signal, !alwaysCheck)
-  }
-
-  private async _sendLines(lines: string[], signal?: AbortSignal, requireGamePhase = true) {
     const { isGameClientForeground, logger, ongoingGame } = this._context
 
     if (signal?.aborted) return false
@@ -81,7 +72,7 @@ export class InGameSendExecutor {
       return false
     }
 
-    const phase = requireGamePhase ? ongoingGame.state.queryStage.phase : 'in-game'
+    const phase = ongoingGame.state.queryStage.phase
 
     if (phase !== 'champ-select' && phase !== 'lobby' && phase !== 'in-game') {
       logger.warn('Cannot send lines: unsupported gameflow phase', {
@@ -107,7 +98,7 @@ export class InGameSendExecutor {
     signal?.addEventListener('abort', cancel, { once: true })
 
     try {
-      return await this._sendLinesInGame(normalizedLines, controller.signal, requireGamePhase)
+      return await this._sendLinesInGame(normalizedLines, controller.signal)
     } finally {
       signal?.removeEventListener('abort', cancel)
       if (this._currentKeyboardSendController === controller) {
@@ -149,7 +140,7 @@ export class InGameSendExecutor {
       })
   }
 
-  private async _sendLinesInGame(lines: string[], signal: AbortSignal, requireGamePhase: boolean) {
+  private async _sendLinesInGame(lines: string[], signal: AbortSignal) {
     const { logger, settings, isGameClientForeground, ongoingGame } = this._context
 
     if (!NATIVE_SUPPORT.nativeInput.available) {
@@ -169,7 +160,7 @@ export class InGameSendExecutor {
 
     const canSend = async () =>
       !signal.aborted &&
-      (!requireGamePhase || ongoingGame.state.queryStage.phase === 'in-game') &&
+      ongoingGame.state.queryStage.phase === 'in-game' &&
       (await isGameClientForeground()) &&
       !signal.aborted
 
