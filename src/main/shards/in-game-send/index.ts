@@ -1,4 +1,5 @@
 import { IAkariShardInitDispose, Shard, SharedGlobalShard } from '@shared/akari-shard'
+import { AUTO_SURRENDER_GAME_PHASES } from '@shared/shards/auto-misc/auto-surrender'
 import {
   normalizeInGameSendCustomTemplateItems,
   normalizeInGameSendFixedTextPresetItems
@@ -206,6 +207,19 @@ export class InGameSendMain implements IAkariShardInitDispose {
     this._presetSelectionController.start()
     this._aiEvaluationShortcutController.start()
     this._ipcHandlers.register()
+  }
+
+  async sendSurrender(signal: AbortSignal, alwaysCheck = false) {
+    if (
+      process.platform !== 'win32' ||
+      (!alwaysCheck &&
+        !AUTO_SURRENDER_GAME_PHASES.some(
+          (phase) => phase === this._leagueClient.data.gameflow.phase
+        ))
+    ) {
+      return false
+    }
+    return this._sendExecutor.sendSurrender(signal, alwaysCheck)
   }
 
   async onDispose() {}

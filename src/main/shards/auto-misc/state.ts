@@ -1,7 +1,12 @@
 import { AutoMiscRankedStatus } from '@shared/shards/auto-misc'
+import { DEFAULT_AUTO_SURRENDER_REGION } from '@shared/shards/auto-misc/auto-surrender'
 import { makeAutoObservable } from 'mobx'
 
 export class AutoMiscSettings {
+  autoSurrenderEnabled = false
+  autoSurrenderAlwaysCheck = false
+  autoSurrenderRegion = { ...DEFAULT_AUTO_SURRENDER_REGION }
+
   autoReplyEnabled = false
   autoReplyEnableOnAway = false
   autoReplyText = ''

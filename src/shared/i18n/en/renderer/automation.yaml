@@ -189,6 +189,43 @@ automation:
         unavailable: Not connected to the client, unable to load the friends list.
         noFriends: No friends found
   misc:
+    autoSurrender:
+      title: Follow Surrender
+      enabled: Enable
+      alwaysCheck:
+        label: Always Check
+        description: Check without waiting for game detection, including while spectating. Only the foreground League of Legends game window is recognized, with one attempt per game process. Spectating allows recognition testing but cannot surrender.
+      description: While the game is in the foreground, recognize the yellow Chinese army surrender announcement in the chat area and immediately send /ff once. Any army name matches; vote counts are ignored. At most one attempt per game. Teammates still need to pass the vote.
+      duration: 'Last recognition: {{ms}} ms'
+      lastText: Last recognized text
+      saved: Chat region saved
+      saveFailed: Could not save. Please try again.
+      status:
+        idle: Waiting for a game
+        starting: Preparing recognition
+        watching: Watching for a surrender announcement
+        paused: Recognition paused while the game is in the background
+        triggered: Surrender attempted for this game
+        unavailable: Automatic input is unavailable
+        error: Stopped. Turn off and on to retry.
+      errors:
+        native-input-unavailable: Automatic input is unavailable. Check administrator privileges and native input support.
+        ocr-language-unavailable: Simplified Chinese OCR is unavailable. Install the Simplified Chinese optical character recognition feature in Windows Settings, then turn this feature off and on.
+        ocr-initialization-failed: Could not start local recognition. Check Windows PowerShell and system OCR availability.
+        ocr-scan-failed: Chat recognition failed. Make sure the game window is visible, then turn this feature off and on.
+        ocr-timeout: Recognition timed out. Turn this feature off and on to retry.
+        ocr-worker-exited: Recognition stopped unexpectedly. Turn this feature off and on to retry.
+        send-failed: Input did not finish after this game's surrender attempt. Please act manually.
+      region:
+        label: Chat Region
+        description: Percentages of the game window, defaulting to its bottom-left quadrant. Include complete chat messages. Adjust after changing chat position, font size, or resolution.
+        x: Left
+        y: Top
+        width: Width
+        height: Height
+        invalid: The region must be nonempty and fit inside the game window.
+        reset: Reset
+        save: Save Region
     autoReply:
       updated: Updated
       title: Auto Reply

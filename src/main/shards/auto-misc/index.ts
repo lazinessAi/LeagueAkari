@@ -1,6 +1,10 @@
+import { NATIVE_SUPPORT } from '@main/native'
 import { IAkariShardInitDispose, Shard } from '@shared/akari-shard'
+import { autoSurrenderRegionSchema } from '@shared/shards/auto-misc/auto-surrender'
 import { z } from 'zod'
 
+import { GameClientMain } from '../game-client'
+import { InGameSendMain } from '../in-game-send'
 import { AkariIpcMain } from '../ipc'
 import { LeagueClientMain } from '../league-client'
 import { AkariLogger, LoggerFactoryMain } from '../logger-factory'
@@ -8,6 +12,9 @@ import { MobxUtilsMain } from '../mobx-utils'
 import { SettingFactoryMain } from '../setting-factory'
 import { SetterSettingService } from '../setting-factory/setter-setting-service'
 import { AutoMiscAutoReplyController } from './auto-reply-controller'
+import { AutoSurrenderController } from './auto-surrender/auto-surrender-controller'
+import { SurrenderOcrExecutor } from './auto-surrender/ocr-executor'
+import { AutoSurrenderState } from './auto-surrender/state'
 import {
   AUTO_MISC_MAIN_NAMESPACE,
   AUTO_MISC_SETTING_KEYS,
@@ -22,6 +29,7 @@ export class AutoMiscMain implements IAkariShardInitDispose {
   static id = AUTO_MISC_MAIN_NAMESPACE
 
   public readonly settings = new AutoMiscSettings()
+  public readonly autoSurrender = new AutoSurrenderState()
 
   private readonly _logger: AkariLogger
   private readonly _settingService: SetterSettingService
@@ -29,18 +37,30 @@ export class AutoMiscMain implements IAkariShardInitDispose {
   private readonly _autoReplyController: AutoMiscAutoReplyController
   private readonly _loginAutomationController: AutoMiscLoginAutomationController
   private readonly _ipcHandlers: AutoMiscIpcHandlers
+  private readonly _autoSurrenderController: AutoSurrenderController
 
   constructor(
     loggerFactory: LoggerFactoryMain,
     settingFactory: SettingFactoryMain,
     private readonly _leagueClient: LeagueClientMain,
     private readonly _mobxUtils: MobxUtilsMain,
-    private readonly _ipc: AkariIpcMain
+    private readonly _ipc: AkariIpcMain,
+    private readonly _gameClient: GameClientMain,
+    private readonly _inGameSend: InGameSendMain
   ) {
     this._logger = loggerFactory.create(AutoMiscMain.id)
     this._settingService = settingFactory.register(
       AutoMiscMain.id,
       {
+        autoSurrenderEnabled: { default: this.settings.autoSurrenderEnabled, schema: z.boolean() },
+        autoSurrenderAlwaysCheck: {
+          default: this.settings.autoSurrenderAlwaysCheck,
+          schema: z.boolean()
+        },
+        autoSurrenderRegion: {
+          default: this.settings.autoSurrenderRegion,
+          schema: autoSurrenderRegionSchema
+        },
         autoReplyEnabled: { default: this.settings.autoReplyEnabled, schema: z.boolean() },
         autoReplyEnableOnAway: {
           default: this.settings.autoReplyEnableOnAway,
@@ -90,6 +110,13 @@ export class AutoMiscMain implements IAkariShardInitDispose {
     this._autoReplyController = new AutoMiscAutoReplyController(this._context)
     this._loginAutomationController = new AutoMiscLoginAutomationController(this._context)
     this._ipcHandlers = new AutoMiscIpcHandlers(this._context, this._loginAutomationController)
+    this._autoSurrenderController = new AutoSurrenderController(this._context, this.autoSurrender, {
+      isAvailable: () => process.platform === 'win32' && NATIVE_SUPPORT.nativeInput.available,
+      isGameForeground: () => this._gameClient.isGameClientForegroundCached(),
+      createOcr: () => new SurrenderOcrExecutor(),
+      sendSurrender: (signal) =>
+        this._inGameSend.sendSurrender(signal, this.settings.autoSurrenderAlwaysCheck)
+    })
   }
 
   async onInit() {
@@ -97,9 +124,20 @@ export class AutoMiscMain implements IAkariShardInitDispose {
     this._context.mobxUtils.propSync(AutoMiscMain.id, 'settings', this.settings, [
       ...AUTO_MISC_SETTING_KEYS
     ])
+    this._mobxUtils.propSync(AutoMiscMain.id, 'autoSurrender', this.autoSurrender, [
+      'status',
+      'error',
+      'lastText',
+      'lastScanDurationMs'
+    ])
 
     this._ipcHandlers.register()
     this._autoReplyController.watch()
     this._loginAutomationController.watch()
+    this._autoSurrenderController.watch()
+  }
+
+  async onDispose() {
+    this._autoSurrenderController.dispose()
   }
 }

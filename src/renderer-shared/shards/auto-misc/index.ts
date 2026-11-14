@@ -4,6 +4,7 @@ import type {
   AutoMiscRankedStatus,
   AutoMiscRankedTier
 } from '@shared/shards/auto-misc'
+import type { AutoSurrenderRegion } from '@shared/shards/auto-misc/auto-surrender'
 
 import { AkariIpcRenderer } from '../ipc'
 import { PiniaMobxUtilsRenderer } from '../pinia-mobx-utils'
@@ -38,6 +39,18 @@ export class AutoMiscRenderer implements IAkariShardInitDispose {
 
   setAutoReplyEnabled(enabled: boolean) {
     return this._settingUtils.set(MAIN_SHARD_NAMESPACE, 'autoReplyEnabled', enabled)
+  }
+
+  setAutoSurrenderEnabled(enabled: boolean) {
+    return this._settingUtils.set(MAIN_SHARD_NAMESPACE, 'autoSurrenderEnabled', enabled)
+  }
+
+  setAutoSurrenderRegion(region: AutoSurrenderRegion) {
+    return this._settingUtils.set(MAIN_SHARD_NAMESPACE, 'autoSurrenderRegion', region)
+  }
+
+  setAutoSurrenderAlwaysCheck(enabled: boolean) {
+    return this._settingUtils.set(MAIN_SHARD_NAMESPACE, 'autoSurrenderAlwaysCheck', enabled)
   }
 
   setAutoReplyText(text: string) {

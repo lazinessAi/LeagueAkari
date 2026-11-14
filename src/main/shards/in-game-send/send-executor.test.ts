@@ -204,4 +204,59 @@ describe('InGameSendExecutor', () => {
     expect(context.settings.cancelShortcut).toBeNull()
     expect(context.logger.error).toHaveBeenCalledWith('Register shortcut failed', error)
   })
+
+  it('cancels automatic input if disabled while waiting for the foreground check', async () => {
+    const { context } = createContext('in-game')
+    const abort = new AbortController()
+    context.isGameClientForeground = async () => {
+      abort.abort()
+      return true
+    }
+    const executor = new InGameSendExecutor(context)
+    await expect(executor.sendLines(['/ff'], abort.signal)).resolves.toBe(false)
+    expect(nativeInputMock.instance.sendKey).not.toHaveBeenCalled()
+  })
+
+  it.each(['unavailable', 'lobby', 'champ-select'])(
+    'sends always-check surrender only to the foreground game despite %s state',
+    async (phase) => {
+      const { context, chatSend } = createContext(phase)
+      const executor = new InGameSendExecutor(context)
+      await expect(executor.sendSurrender(new AbortController().signal, true)).resolves.toBe(true)
+      expect(nativeInputMock.instance.sendString).toHaveBeenCalledExactlyOnceWith('/ff')
+      expect(chatSend).not.toHaveBeenCalled()
+    }
+  )
+
+  it('does not bypass game detection for a normal surrender attempt', async () => {
+    const { context } = createContext('unavailable')
+    const executor = new InGameSendExecutor(context)
+    await expect(executor.sendSurrender(new AbortController().signal)).resolves.toBe(false)
+    expect(nativeInputMock.instance.sendKey).not.toHaveBeenCalled()
+  })
+
+  it('still requires foreground and respects cancellation in always-check mode', async () => {
+    const { context } = createContext('unavailable', { foreground: false })
+    const executor = new InGameSendExecutor(context)
+    const abort = new AbortController()
+    await expect(executor.sendSurrender(abort.signal, true)).resolves.toBe(false)
+    context.isGameClientForeground = async () => {
+      abort.abort()
+      return true
+    }
+    await expect(executor.sendSurrender(abort.signal, true)).resolves.toBe(false)
+    expect(nativeInputMock.instance.sendKey).not.toHaveBeenCalled()
+  })
+
+  it('does not type or submit if focus leaves the game after opening chat', async () => {
+    const { context } = createContext('in-game')
+    const foreground = vi.fn(async () => true)
+    context.isGameClientForeground = foreground
+    nativeInputMock.instance.sendKey.mockImplementationOnce(async () => {
+      foreground.mockResolvedValue(false)
+    })
+    const executor = new InGameSendExecutor(context)
+    await expect(executor.sendLines(['/ff'])).resolves.toBe(false)
+    expect(nativeInputMock.instance.sendString).not.toHaveBeenCalled()
+  })
 })

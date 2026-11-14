@@ -164,6 +164,12 @@ export function useEnabledAutomations() {
       targetId: 'automation.champ-config.enabled'
     })
 
+    add(autoMisc.settings.autoSurrenderEnabled, {
+      id: 'auto-surrender',
+      label: t('titlebar.automation.items.autoSurrender'),
+      detail: t(`automation.misc.autoSurrender.status.${autoMisc.autoSurrender.status}`),
+      targetId: 'automation.misc.auto-surrender.enabled'
+    })
     add(autoMisc.settings.autoReplyEnabled, {
       id: 'auto-reply',
       label: t('titlebar.automation.items.autoReply'),

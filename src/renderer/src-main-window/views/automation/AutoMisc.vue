@@ -2,6 +2,7 @@
   <div class="h-full w-full">
     <NScrollbar class="relative h-full max-w-full">
       <div class="mx-auto flex max-w-200 flex-col gap-6 p-6">
+        <AutoSurrenderSettings />
         <SettingsSection
           setting-id="automation.misc.auto-reply"
           :title="t('automation.misc.autoReply.title')"
@@ -165,6 +166,7 @@
 </template>
 
 <script setup lang="ts">
+import AutoSurrenderSettings from './components/auto-surrender/AutoSurrenderSettings.vue'
 import LcuImage from '@renderer-shared/components/LcuImage.vue'
 import SettingsRow from '@main-window/settings-navigation/NavigableSettingsRow.vue'
 import SettingsSection from '@main-window/settings-navigation/NavigableSettingsSection.vue'

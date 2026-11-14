@@ -953,6 +953,32 @@ const targetDefinitions = [
     labelKey: 'automation.champConfig.configure.label'
   },
   {
+    id: 'automation.misc.auto-surrender',
+    route: { name: 'automation', section: 'misc' },
+    labelKey: 'automation.misc.autoSurrender.title',
+    descriptionKey: 'automation.misc.autoSurrender.description'
+  },
+  {
+    id: 'automation.misc.auto-surrender.enabled',
+    route: { name: 'automation', section: 'misc' },
+    parentId: 'automation.misc.auto-surrender',
+    labelKey: 'automation.misc.autoSurrender.enabled'
+  },
+  {
+    id: 'automation.misc.auto-surrender.region',
+    route: { name: 'automation', section: 'misc' },
+    parentId: 'automation.misc.auto-surrender',
+    labelKey: 'automation.misc.autoSurrender.region.label',
+    descriptionKey: 'automation.misc.autoSurrender.region.description'
+  },
+  {
+    id: 'automation.misc.auto-surrender.always-check',
+    route: { name: 'automation', section: 'misc' },
+    parentId: 'automation.misc.auto-surrender',
+    labelKey: 'automation.misc.autoSurrender.alwaysCheck.label',
+    descriptionKey: 'automation.misc.autoSurrender.alwaysCheck.description'
+  },
+  {
     id: 'automation.misc.auto-reply',
     route: { name: 'automation', section: 'misc' },
     labelKey: 'automation.misc.autoReply.title',

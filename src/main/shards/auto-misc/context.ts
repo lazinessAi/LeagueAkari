@@ -7,6 +7,9 @@ import type { AutoMiscSettings } from './state'
 export const AUTO_MISC_MAIN_NAMESPACE = 'auto-misc-main'
 
 export const AUTO_MISC_SETTING_KEYS = [
+  'autoSurrenderEnabled',
+  'autoSurrenderAlwaysCheck',
+  'autoSurrenderRegion',
   'autoReplyEnabled',
   'autoReplyEnableOnAway',
   'autoReplyText',

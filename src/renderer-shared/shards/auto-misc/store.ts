@@ -1,9 +1,16 @@
 import type { AutoMiscRankedStatus } from '@shared/shards/auto-misc'
+import {
+  type AutoSurrenderSnapshot,
+  DEFAULT_AUTO_SURRENDER_REGION
+} from '@shared/shards/auto-misc/auto-surrender'
 import { defineStore } from 'pinia'
 import { shallowReactive } from 'vue'
 
 export const useAutoMiscStore = defineStore('shard:auto-misc-renderer', () => {
   const settings = shallowReactive({
+    autoSurrenderEnabled: false,
+    autoSurrenderAlwaysCheck: false,
+    autoSurrenderRegion: { ...DEFAULT_AUTO_SURRENDER_REGION },
     autoReplyEnabled: false,
     autoReplyEnableOnAway: false,
     autoReplyText: '',
@@ -18,7 +25,12 @@ export const useAutoMiscStore = defineStore('shard:auto-misc-renderer', () => {
     } as AutoMiscRankedStatus
   })
 
-  return {
-    settings
-  }
+  const autoSurrender = shallowReactive<AutoSurrenderSnapshot>({
+    status: 'idle',
+    error: null,
+    lastText: '',
+    lastScanDurationMs: null
+  })
+
+  return { settings, autoSurrender }
 })
