@@ -125,6 +125,7 @@ titlebar:
       autoChampConfig: Automatic champion setup
       autoReply: Automatic reply
       autoSurrender: Follow surrender
+      autoAcceptSurrender: Auto accept surrender
       scheduledInvitation: Scheduled friend invitation
       lockOffline: Keep offline status
       resetStatusMessage: Reset chat status on login

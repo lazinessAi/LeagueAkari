@@ -170,6 +170,14 @@ export function useEnabledAutomations() {
       detail: t(`automation.misc.autoSurrender.status.${autoMisc.autoSurrender.status}`),
       targetId: 'automation.misc.auto-surrender.enabled'
     })
+    add(autoMisc.settings.autoAcceptSurrenderEnabled, {
+      id: 'auto-accept-surrender',
+      label: t('titlebar.automation.items.autoAcceptSurrender'),
+      detail: t(
+        `automation.misc.autoAcceptSurrender.status.${autoMisc.autoAcceptSurrender.status}`
+      ),
+      targetId: 'automation.misc.auto-accept-surrender.enabled'
+    })
     add(autoMisc.settings.autoReplyEnabled, {
       id: 'auto-reply',
       label: t('titlebar.automation.items.autoReply'),

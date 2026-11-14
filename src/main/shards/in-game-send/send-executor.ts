@@ -17,8 +17,20 @@ export function normalizeInGameSendLines(lines: string[]) {
 
 export class InGameSendExecutor {
   private _currentKeyboardSendController: AbortController | null = null
+  private _surrenderTask: Promise<boolean> | null = null
 
   constructor(private readonly _context: InGameSendMainContext) {}
+
+  async sendSurrender(signal: AbortSignal) {
+    if (signal.aborted || this._context.ongoingGame.state.queryStage.phase !== 'in-game')
+      return false
+    // Both surrender automations use /ff. Share concurrent input instead of cancelling each other.
+    this._surrenderTask ??= this.sendLines(['/ff'], signal).finally(() => {
+      this._surrenderTask = null
+    })
+    const sent = await this._surrenderTask
+    return sent && !signal.aborted
+  }
 
   watchCancelShortcut() {
     const { keyboardShortcuts, logger, mobxUtils, settingService, settings } = this._context

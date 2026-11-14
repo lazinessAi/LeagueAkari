@@ -1,8 +1,14 @@
 import { AutoMiscRankedStatus } from '@shared/shards/auto-misc'
-import { DEFAULT_AUTO_SURRENDER_REGION } from '@shared/shards/auto-misc/auto-surrender'
+import {
+  DEFAULT_AUTO_ACCEPT_SURRENDER_REGION,
+  DEFAULT_AUTO_SURRENDER_REGION
+} from '@shared/shards/auto-misc/auto-surrender'
 import { makeAutoObservable } from 'mobx'
 
 export class AutoMiscSettings {
+  autoAcceptSurrenderEnabled = false
+  autoAcceptSurrenderRegion = { ...DEFAULT_AUTO_ACCEPT_SURRENDER_REGION }
+
   autoSurrenderEnabled = false
   autoSurrenderRegion = { ...DEFAULT_AUTO_SURRENDER_REGION }
 

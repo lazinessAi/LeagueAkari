@@ -233,6 +233,50 @@ automation:
         invalid: 区域不能为空，且不能超出游戏窗口。
         reset: 恢复默认
         save: 保存区域
+    autoAcceptSurrender:
+      title: '自动接受投降'
+      enabled: 开启
+      description: '游戏处于前台时，识别投票面板上的中文“发起投降”标题，自动发送 /ff 赞成当前投票。两次尝试需间隔超过 1 分钟，无需等待标题消失。默认关闭。'
+      duration: '最近识别：{{ms}} 毫秒'
+      lastText: 最近识别到的文字
+      saved: '投票面板区域已保存'
+      saveFailed: 保存失败，请重试
+      status:
+        idle: 等待进入游戏
+        starting: 正在准备识别
+        watching: '正在检查投降投票'
+        paused: 游戏不在前台，已暂停识别
+        triggered: '本次投票已尝试赞成'
+        unavailable: 当前无法自动输入
+        error: 已停止，请关闭后重新开启
+      errors:
+        native-input-unavailable: 自动输入不可用，请确认管理员权限及原生输入组件状态。
+        ocr-language-unavailable: 缺少简体中文文字识别支持，请在 Windows 设置中安装简体中文语言的光学字符识别功能后重新开启。
+        ocr-initialization-failed: 无法启动本机文字识别，请确认 Windows PowerShell 和系统文字识别功能可用。
+        ocr-scan-failed: '投票面板识别失败，请确认游戏窗口可见后重新开启。'
+        ocr-timeout: 文字识别超时，请重新开启。
+        ocr-worker-exited: 文字识别意外停止，请重新开启。
+        send-failed: '本次投票已尝试赞成，但自动输入未完成。请手动处理。'
+      region:
+        label: '投票面板区域'
+        description: '覆盖投票面板的完整“发起投降”标题，尽量避开聊天区域。默认使用游戏窗口右下四分之一区域；若投票面板已移动，请调整区域。'
+        canvasLabel: '投票面板识别区域预览，可拖拽框选或用方向键移动选区'
+        schematic: 游戏窗口示意图
+        previewHint: 拖拽空白处重新框选，拖动选区或四角调整位置与大小。
+        expand: 放大调整
+        precise: 精确数值调整
+        pickerTitle: '框选投票面板区域'
+        pickerHint: '框住完整的“发起投降”标题，尽量避开聊天区域和其他游戏界面。'
+        keyboardHint: 支持拖拽框选、移动和四角缩放。方向键微调位置，Shift + 方向键加速。
+        cancel: 取消
+        confirm: 保存选区
+        x: 左侧位置
+        y: 顶部位置
+        width: 宽度
+        height: 高度
+        invalid: 区域不能为空，且不能超出游戏窗口。
+        reset: 恢复默认
+        save: 保存区域
     autoReply:
       updated: 已更新
       title: 自动回复

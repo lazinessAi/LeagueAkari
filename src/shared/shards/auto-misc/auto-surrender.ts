@@ -28,6 +28,14 @@ export const DEFAULT_AUTO_SURRENDER_REGION: AutoSurrenderRegion = {
   height: 50
 }
 
+// Covers the usual vote panel above the minimap. The panel may be moved in game.
+export const DEFAULT_AUTO_ACCEPT_SURRENDER_REGION: AutoSurrenderRegion = {
+  x: 50,
+  y: 50,
+  width: 50,
+  height: 50
+}
+
 export type AutoSurrenderStatus =
   'idle' | 'starting' | 'watching' | 'paused' | 'triggered' | 'unavailable' | 'error'
 

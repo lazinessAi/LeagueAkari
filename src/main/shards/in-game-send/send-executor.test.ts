@@ -116,6 +116,29 @@ describe('InGameSendExecutor', () => {
     nativeInputMock.support.available = true
   })
 
+  it('shares simultaneous surrender requests without duplicate or cancelled keyboard input', async () => {
+    const { context } = createContext('in-game')
+    const executor = new InGameSendExecutor(context)
+    const first = executor.sendSurrender(new AbortController().signal)
+    const second = executor.sendSurrender(new AbortController().signal)
+    await expect(Promise.all([first, second])).resolves.toEqual([true, true])
+    expect(nativeInputMock.instance.sendString).toHaveBeenCalledTimes(1)
+    expect(nativeInputMock.instance.sendString).toHaveBeenCalledWith('/ff')
+    await expect(executor.sendSurrender(new AbortController().signal)).resolves.toBe(true)
+    expect(nativeInputMock.instance.sendString).toHaveBeenCalledTimes(2)
+  })
+
+  it('never sends surrender commands through lobby chat or an aborted request', async () => {
+    const { context, chatSend } = createContext('lobby')
+    const executor = new InGameSendExecutor(context)
+    await expect(executor.sendSurrender(new AbortController().signal)).resolves.toBe(false)
+    const cancelled = new AbortController()
+    cancelled.abort()
+    await expect(executor.sendSurrender(cancelled.signal)).resolves.toBe(false)
+    expect(chatSend).not.toHaveBeenCalled()
+    expect(nativeInputMock.instance.sendString).not.toHaveBeenCalled()
+  })
+
   it('filters empty lines while preserving non-empty line text', () => {
     expect(normalizeInGameSendLines(['one', '', '  ', ' two '])).toEqual(['one', ' two '])
   })

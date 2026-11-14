@@ -233,6 +233,50 @@ automation:
         invalid: The region must be nonempty and fit inside the game window.
         reset: Reset
         save: Save Region
+    autoAcceptSurrender:
+      title: 'Auto Accept Surrender'
+      enabled: Enable
+      description: 'While the game is in the foreground, recognize the Chinese surrender vote panel title, then send /ff to vote yes. Attempts must be more than one minute apart; the title does not need to disappear first. Off by default.'
+      duration: 'Last recognition: {{ms}} ms'
+      lastText: Last recognized text
+      saved: 'Vote panel region saved'
+      saveFailed: Could not save. Please try again.
+      status:
+        idle: Waiting for a game
+        starting: Preparing recognition
+        watching: 'Watching for a surrender vote'
+        paused: Recognition paused while the game is in the background
+        triggered: 'Yes vote attempted for this panel'
+        unavailable: Automatic input is unavailable
+        error: Stopped. Turn off and on to retry.
+      errors:
+        native-input-unavailable: Automatic input is unavailable. Check administrator privileges and native input support.
+        ocr-language-unavailable: Simplified Chinese OCR is unavailable. Install the Simplified Chinese optical character recognition feature in Windows Settings, then turn this feature off and on.
+        ocr-initialization-failed: Could not start local recognition. Check Windows PowerShell and system OCR availability.
+        ocr-scan-failed: 'Vote panel recognition failed. Make sure the game is visible, then turn this feature off and on.'
+        ocr-timeout: Recognition timed out. Turn this feature off and on to retry.
+        ocr-worker-exited: Recognition stopped unexpectedly. Turn this feature off and on to retry.
+        send-failed: 'Automatic input did not finish for this vote. Please act manually.'
+      region:
+        label: 'Vote Panel Region'
+        description: 'Include the complete Chinese surrender title and avoid the chat area. Defaults to the bottom-right quarter of the game window. Adjust if you moved the panel.'
+        canvasLabel: 'Vote panel recognition region preview. Drag to select or use arrow keys to move the selection.'
+        schematic: Game window diagram
+        previewHint: Drag outside the selection to redraw. Drag the selection or its corners to move or resize it.
+        expand: Enlarge Preview
+        precise: Adjust Exact Values
+        pickerTitle: 'Select Vote Panel Region'
+        pickerHint: 'Include the complete Chinese surrender title and avoid chat or other game UI.'
+        keyboardHint: Drag to draw, move, or resize at the corners. Arrow keys move the selection; hold Shift for larger steps.
+        cancel: Cancel
+        confirm: Save Selection
+        x: Left
+        y: Top
+        width: Width
+        height: Height
+        invalid: The region must be nonempty and fit inside the game window.
+        reset: Reset
+        save: Save Region
     autoReply:
       updated: Updated
       title: Auto Reply

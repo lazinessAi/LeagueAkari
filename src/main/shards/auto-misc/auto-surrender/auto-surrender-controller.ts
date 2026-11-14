@@ -9,7 +9,7 @@ import { matchesSurrenderMessage } from './match-message'
 import { SurrenderOcrError, type SurrenderOcrExecutor } from './ocr-executor'
 import type { AutoSurrenderState } from './state'
 
-interface AutoSurrenderDependencies {
+export interface AutoSurrenderDependencies {
   isAvailable(): boolean
   isGameForeground(): Promise<boolean>
   createOcr(): Pick<SurrenderOcrExecutor, 'start' | 'scan' | 'dispose'>

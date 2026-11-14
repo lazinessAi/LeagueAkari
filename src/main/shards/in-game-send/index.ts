@@ -216,7 +216,7 @@ export class InGameSendMain implements IAkariShardInitDispose {
     ) {
       return false
     }
-    return this._sendExecutor.sendLines(['/ff'], signal)
+    return this._sendExecutor.sendSurrender(signal)
   }
 
   async onDispose() {}

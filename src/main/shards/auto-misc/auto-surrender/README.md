@@ -45,3 +45,31 @@ It does not capture the desktop, change game state, or send keys.
 Controller tests cover first-message triggering, once-per-game behavior, new games, late OCR results,
 focus loss, cancellation, missing OCR, and sequential scanning. They mock OCR/input and do not prove
 that native capture or input works in a running game.
+
+## Auto Accept Surrender
+
+A separate opt-in switch recognizes the Chinese `发起投降` vote panel. It has its own persisted
+region, defaulting to the bottom-right quadrant (50%, 50%, 50%, 50%). Include the complete title;
+adjust the region if the in-game panel was moved. It uses the same game/session, foreground, native
+input, and cancellation checks as Follow Surrender. Spectator mode does not start it.
+
+Vote recognition preserves the image colors and matches the Chinese
+surrender title in recognized text (including a known blurred-character OCR variant). Vote-bar colors, counts, and
+timer appearance are ignored. Keep chat and unrelated interface text outside the selected region.
+The first recognized panel sends `/ff`, which casts a yes vote while a vote is active.
+The input executor shares simultaneous `/ff` requests from the two automations.
+
+Scans are sequential with a 250 ms gap, plus capture/OCR duration. The panel is consumed before
+input starts, including failed attempts. Switch/region changes and foreground loss do not clear
+that latch. Once more than 60 seconds have elapsed since the attempt, the next recognized title
+is treated as a new vote, even if the previous title never disappeared. Skipped/background frames
+cannot trigger input. A new game ID resets the latch. This state lasts for the Akari process.
+The panel does not expose the initiator identity; it detects an active vote, including one started
+by the local player. Actual input success and vote timing still require an in-game smoke check.
+
+Verify the production worker with a panel screenshot, or a negative sample containing unrelated text:
+
+```powershell
+node src/main/shards/auto-misc/auto-surrender/ocr-smoke.mjs --vote C:/path/to/vote.png
+node src/main/shards/auto-misc/auto-surrender/ocr-smoke.mjs --no-vote C:/path/to/unrelated-text.png
+```

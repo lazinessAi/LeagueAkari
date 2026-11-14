@@ -80,7 +80,7 @@ public static class AkariSurrenderCapture {
     } catch { bitmap.Dispose(); throw; }
   }
 
-  public static Bitmap Prepare(Bitmap source, int maxDimension) {
+  public static Bitmap Prepare(Bitmap source, int maxDimension, bool vote) {
     var bitmap = new Bitmap(source.Width, source.Height, PixelFormat.Format32bppArgb);
     using (var graphics = Graphics.FromImage(bitmap)) graphics.DrawImageUnscaled(source, 0, 0);
     var data = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
@@ -93,7 +93,8 @@ public static class AkariSurrenderCapture {
           int b = pixels[i], g = pixels[i + 1], r = pixels[i + 2];
           bool yellow = r > 130 && g > 80 && r > b * 1.35 && g > b * 1.2;
           byte value = yellow ? (byte)0 : (byte)255;
-          pixels[i] = pixels[i + 1] = pixels[i + 2] = value;
+          // Preserve the panel's turquoise title; the chat mode filters yellow announcements.
+          if (!vote) pixels[i] = pixels[i + 1] = pixels[i + 2] = value;
           pixels[i + 3] = 255;
         }
       }
@@ -138,7 +139,7 @@ while ($null -ne ($line = [Console]::ReadLine())) {
       Write-Result @{ id = $request.id; type = 'result'; text = ''; skipped = $true; durationMs = 0 }
       continue
     }
-    $prepared = [AkariSurrenderCapture]::Prepare($bitmap, [Windows.Media.Ocr.OcrEngine]::MaxImageDimension)
+    $prepared = [AkariSurrenderCapture]::Prepare($bitmap, [Windows.Media.Ocr.OcrEngine]::MaxImageDimension, ($request.mode -eq 'vote'))
     $memory = [IO.MemoryStream]::new()
     $prepared.Save($memory, [Drawing.Imaging.ImageFormat]::Png)
     $randomAccess = [Windows.Storage.Streams.InMemoryRandomAccessStream]::new()

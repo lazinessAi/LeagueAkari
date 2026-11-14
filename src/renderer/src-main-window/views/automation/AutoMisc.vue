@@ -3,6 +3,7 @@
     <NScrollbar class="relative h-full max-w-full">
       <div class="mx-auto flex max-w-200 flex-col gap-6 p-6">
         <AutoSurrenderSettings />
+        <AutoSurrenderSettings mode="accept" />
         <SettingsSection
           setting-id="automation.misc.auto-reply"
           :title="t('automation.misc.autoReply.title')"

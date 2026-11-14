@@ -106,7 +106,10 @@ export class SurrenderOcrExecutor {
     })
   }
 
-  scan(region: AutoSurrenderRegion): Promise<SurrenderOcrResult> {
+  scan(
+    region: AutoSurrenderRegion,
+    mode: 'announcement' | 'vote' = 'announcement'
+  ): Promise<SurrenderOcrResult> {
     if (process.platform !== 'win32' || !this._process || this._process.exitCode !== null) {
       return Promise.reject(new SurrenderOcrError('ocr-worker-exited'))
     }
@@ -121,7 +124,7 @@ export class SurrenderOcrExecutor {
           this.dispose()
         }, 3000)
       }
-      child.stdin.write(JSON.stringify({ id: ++this._sequence, region }) + '\n', (error) => {
+      child.stdin.write(JSON.stringify({ id: ++this._sequence, region, mode }) + '\n', (error) => {
         if (error) this._rejectPending('ocr-worker-exited')
       })
     })

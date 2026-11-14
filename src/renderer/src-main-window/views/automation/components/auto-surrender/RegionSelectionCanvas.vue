@@ -6,7 +6,7 @@
     :style="{ aspectRatio, '--region-accent': themeVars.primaryColor }"
     :tabindex="interactive ? 0 : undefined"
     role="group"
-    :aria-label="t('automation.misc.autoSurrender.region.canvasLabel')"
+    :aria-label="t(`${translationKey}.region.canvasLabel`)"
     @pointerdown="startDrag"
     @pointermove="updateDrag"
     @pointerup="finishDrag"
@@ -21,7 +21,7 @@
       <div class="region-minimap" />
     </div>
     <span class="region-caption">
-      {{ t('automation.misc.autoSurrender.region.schematic') }}
+      {{ t(`${translationKey}.region.schematic`) }}
     </span>
     <div
       class="region-selection"
@@ -33,9 +33,7 @@
         height: `${region.height}%`
       }"
     >
-      <span class="region-selection-label">{{
-        t('automation.misc.autoSurrender.region.label')
-      }}</span>
+      <span class="region-selection-label">{{ t(`${translationKey}.region.label`) }}</span>
       <template v-if="interactive">
         <span
           v-for="corner in corners"
@@ -60,9 +58,11 @@ import { moveSelection, selectionFromPoints, type RegionPoint } from './region-s
 
 const {
   region,
+  translationKey = 'automation.misc.autoSurrender',
   aspectRatio = 16 / 9,
   interactive = true
 } = defineProps<{
+  translationKey?: string
   region: AutoSurrenderRegion
   aspectRatio?: number
   interactive?: boolean

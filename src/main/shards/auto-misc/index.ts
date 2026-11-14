@@ -12,6 +12,7 @@ import { MobxUtilsMain } from '../mobx-utils'
 import { SettingFactoryMain } from '../setting-factory'
 import { SetterSettingService } from '../setting-factory/setter-setting-service'
 import { AutoMiscAutoReplyController } from './auto-reply-controller'
+import { AutoAcceptSurrenderController } from './auto-surrender/auto-accept-surrender-controller'
 import { AutoSurrenderController } from './auto-surrender/auto-surrender-controller'
 import { SurrenderOcrExecutor } from './auto-surrender/ocr-executor'
 import { AutoSurrenderState } from './auto-surrender/state'
@@ -29,6 +30,7 @@ export class AutoMiscMain implements IAkariShardInitDispose {
   static id = AUTO_MISC_MAIN_NAMESPACE
 
   public readonly settings = new AutoMiscSettings()
+  public readonly autoAcceptSurrender = new AutoSurrenderState()
   public readonly autoSurrender = new AutoSurrenderState()
 
   private readonly _logger: AkariLogger
@@ -37,6 +39,7 @@ export class AutoMiscMain implements IAkariShardInitDispose {
   private readonly _autoReplyController: AutoMiscAutoReplyController
   private readonly _loginAutomationController: AutoMiscLoginAutomationController
   private readonly _ipcHandlers: AutoMiscIpcHandlers
+  private readonly _autoAcceptSurrenderController: AutoAcceptSurrenderController
   private readonly _autoSurrenderController: AutoSurrenderController
 
   constructor(
@@ -52,6 +55,14 @@ export class AutoMiscMain implements IAkariShardInitDispose {
     this._settingService = settingFactory.register(
       AutoMiscMain.id,
       {
+        autoAcceptSurrenderEnabled: {
+          default: this.settings.autoAcceptSurrenderEnabled,
+          schema: z.boolean()
+        },
+        autoAcceptSurrenderRegion: {
+          default: this.settings.autoAcceptSurrenderRegion,
+          schema: autoSurrenderRegionSchema
+        },
         autoSurrenderEnabled: { default: this.settings.autoSurrenderEnabled, schema: z.boolean() },
         autoSurrenderRegion: {
           default: this.settings.autoSurrenderRegion,
@@ -106,6 +117,16 @@ export class AutoMiscMain implements IAkariShardInitDispose {
     this._autoReplyController = new AutoMiscAutoReplyController(this._context)
     this._loginAutomationController = new AutoMiscLoginAutomationController(this._context)
     this._ipcHandlers = new AutoMiscIpcHandlers(this._context, this._loginAutomationController)
+    this._autoAcceptSurrenderController = new AutoAcceptSurrenderController(
+      this._context,
+      this.autoAcceptSurrender,
+      {
+        isAvailable: () => process.platform === 'win32' && NATIVE_SUPPORT.nativeInput.available,
+        isGameForeground: () => this._gameClient.isGameClientForegroundCached(),
+        createOcr: () => new SurrenderOcrExecutor(),
+        sendSurrender: (signal) => this._inGameSend.sendSurrender(signal)
+      }
+    )
     this._autoSurrenderController = new AutoSurrenderController(this._context, this.autoSurrender, {
       isAvailable: () => process.platform === 'win32' && NATIVE_SUPPORT.nativeInput.available,
       isGameForeground: () => this._gameClient.isGameClientForegroundCached(),
@@ -119,6 +140,12 @@ export class AutoMiscMain implements IAkariShardInitDispose {
     this._context.mobxUtils.propSync(AutoMiscMain.id, 'settings', this.settings, [
       ...AUTO_MISC_SETTING_KEYS
     ])
+    this._mobxUtils.propSync(AutoMiscMain.id, 'autoAcceptSurrender', this.autoAcceptSurrender, [
+      'status',
+      'error',
+      'lastText',
+      'lastScanDurationMs'
+    ])
     this._mobxUtils.propSync(AutoMiscMain.id, 'autoSurrender', this.autoSurrender, [
       'status',
       'error',
@@ -130,9 +157,11 @@ export class AutoMiscMain implements IAkariShardInitDispose {
     this._autoReplyController.watch()
     this._loginAutomationController.watch()
     this._autoSurrenderController.watch()
+    this._autoAcceptSurrenderController.watch()
   }
 
   async onDispose() {
     this._autoSurrenderController.dispose()
+    this._autoAcceptSurrenderController.dispose()
   }
 }
