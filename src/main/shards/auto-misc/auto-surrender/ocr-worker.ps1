@@ -51,7 +51,26 @@ public static class AkariSurrenderCapture {
   [DllImport("user32.dll")] static extern bool ClientToScreen(IntPtr window, ref Point point);
   [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
 
-  public static Bitmap Capture(double x, double y, double width, double height) {
+  static Rectangle RegionBounds(int width, int height, double[] region) {
+    int left = (int)(width * region[0] / 100), top = (int)(height * region[1] / 100);
+    int w = Math.Min(width - left, Math.Max(1, (int)(width * region[2] / 100)));
+    int h = Math.Min(height - top, Math.Max(1, (int)(height * region[3] / 100)));
+    return new Rectangle(left, top, w, h);
+  }
+
+  static Bitmap[] Crop(Bitmap source, Rectangle chat, Rectangle panel) {
+    var chatBitmap = source.Clone(chat, PixelFormat.Format32bppArgb);
+    try {
+      return new[] { chatBitmap, source.Clone(panel, PixelFormat.Format32bppArgb) };
+    } catch { chatBitmap.Dispose(); throw; }
+  }
+
+  // Image-file smoke checks use the same pixel bounds and cropping as live capture.
+  public static Bitmap[] Crop(Bitmap source, double[] chat, double[] panel) {
+    return Crop(source, RegionBounds(source.Width, source.Height, chat), RegionBounds(source.Width, source.Height, panel));
+  }
+
+  public static Bitmap[] Capture(double[] chat, double[] panel) {
     var window = GetForegroundWindow();
     uint pid;
     GetWindowThreadProcessId(window, out pid);
@@ -67,22 +86,24 @@ public static class AkariSurrenderCapture {
     if (!GetClientRect(window, out rect) || !ClientToScreen(window, ref origin)) return null;
     int clientWidth = rect.Right - rect.Left, clientHeight = rect.Bottom - rect.Top;
     if (clientWidth <= 0 || clientHeight <= 0) return null;
-    int left = (int)(clientWidth * x / 100), top = (int)(clientHeight * y / 100);
-    int w = Math.Min(clientWidth - left, Math.Max(1, (int)(clientWidth * width / 100)));
-    int h = Math.Min(clientHeight - top, Math.Max(1, (int)(clientHeight * height / 100)));
-    var bitmap = new Bitmap(w, h, PixelFormat.Format32bppArgb);
-    try {
+    var chatBounds = RegionBounds(clientWidth, clientHeight, chat);
+    var panelBounds = RegionBounds(clientWidth, clientHeight, panel);
+    var captureBounds = Rectangle.Union(chatBounds, panelBounds);
+    // One screen read for both regions; default regions only copy the bottom half.
+    using (var bitmap = new Bitmap(captureBounds.Width, captureBounds.Height, PixelFormat.Format32bppArgb)) {
       using (var graphics = Graphics.FromImage(bitmap)) {
-        graphics.CopyFromScreen(origin.X + left, origin.Y + top, 0, 0, bitmap.Size);
+        graphics.CopyFromScreen(origin.X + captureBounds.Left, origin.Y + captureBounds.Top, 0, 0, bitmap.Size);
       }
-      if (GetForegroundWindow() != window) { bitmap.Dispose(); return null; }
-      return bitmap;
-    } catch { bitmap.Dispose(); throw; }
+      if (GetForegroundWindow() != window) return null;
+      chatBounds.Offset(-captureBounds.Left, -captureBounds.Top);
+      panelBounds.Offset(-captureBounds.Left, -captureBounds.Top);
+      return Crop(bitmap, chatBounds, panelBounds);
+    }
   }
 
   public static Bitmap Prepare(Bitmap source, int maxDimension, bool vote) {
-    var bitmap = new Bitmap(source.Width, source.Height, PixelFormat.Format32bppArgb);
-    using (var graphics = Graphics.FromImage(bitmap)) graphics.DrawImageUnscaled(source, 0, 0);
+    // Each crop is owned by this request and recognized once; preprocess it in place.
+    var bitmap = source;
     var data = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
     try {
       var pixels = new byte[data.Stride * data.Height];
@@ -102,7 +123,6 @@ public static class AkariSurrenderCapture {
     } finally { bitmap.UnlockBits(data); }
     double scale = Math.Min(2.0, (double)maxDimension / Math.Max(bitmap.Width, bitmap.Height));
     var scaled = new Bitmap(bitmap, Math.Max(1, (int)(bitmap.Width * scale)), Math.Max(1, (int)(bitmap.Height * scale)));
-    bitmap.Dispose();
     return scaled;
   }
 }
@@ -114,32 +134,14 @@ public static class AkariSurrenderCapture {
   exit 1
 }
 
-while ($null -ne ($line = [Console]::ReadLine())) {
-  $request = $null
-  $bitmap = $null
+function Read-BitmapText([Drawing.Bitmap]$bitmap, [bool]$vote) {
   $prepared = $null
   $memory = $null
   $randomAccess = $null
   $softwareBitmap = $null
   $writer = $null
   try {
-    $request = $line | ConvertFrom-Json
-    $timer = [Diagnostics.Stopwatch]::StartNew()
-    if ($request.image) {
-      $inputStream = [IO.MemoryStream]::new([Convert]::FromBase64String($request.image))
-      try {
-        $image = [Drawing.Bitmap]::new($inputStream)
-        try { $bitmap = [Drawing.Bitmap]::new($image) } finally { $image.Dispose() }
-      } finally { $inputStream.Dispose() }
-    } else {
-      $region = $request.region
-      $bitmap = [AkariSurrenderCapture]::Capture($region.x, $region.y, $region.width, $region.height)
-    }
-    if ($null -eq $bitmap) {
-      Write-Result @{ id = $request.id; type = 'result'; text = ''; skipped = $true; durationMs = 0 }
-      continue
-    }
-    $prepared = [AkariSurrenderCapture]::Prepare($bitmap, [Windows.Media.Ocr.OcrEngine]::MaxImageDimension, ($request.mode -eq 'vote'))
+    $prepared = [AkariSurrenderCapture]::Prepare($bitmap, [Windows.Media.Ocr.OcrEngine]::MaxImageDimension, $vote)
     $memory = [IO.MemoryStream]::new()
     $prepared.Save($memory, [Drawing.Imaging.ImageFormat]::Png)
     $randomAccess = [Windows.Storage.Streams.InMemoryRandomAccessStream]::new()
@@ -151,12 +153,47 @@ while ($null -ne ($line = [Console]::ReadLine())) {
     $decoder = Await-Operation ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($randomAccess)) ([Windows.Graphics.Imaging.BitmapDecoder])
     $softwareBitmap = Await-Operation $decoder.GetSoftwareBitmapAsync() ([Windows.Graphics.Imaging.SoftwareBitmap])
     $result = Await-Operation $engine.RecognizeAsync($softwareBitmap) ([Windows.Media.Ocr.OcrResult])
-    Write-Result @{ id = $request.id; type = 'result'; text = $result.Text; durationMs = $timer.ElapsedMilliseconds; skipped = $false }
+    return $result.Text
+  } finally {
+    foreach ($resource in @($writer, $softwareBitmap, $randomAccess, $memory, $prepared)) {
+      if ($null -ne $resource) { $resource.Dispose() }
+    }
+  }
+}
+
+while ($null -ne ($line = [Console]::ReadLine())) {
+  $request = $null
+  $bitmaps = $null
+  try {
+    $request = $line | ConvertFrom-Json
+    $timer = [Diagnostics.Stopwatch]::StartNew()
+    $chat = $request.regions.chat
+    $panel = $request.regions.panel
+    $chatBounds = [double[]]@($chat.x, $chat.y, $chat.width, $chat.height)
+    $panelBounds = [double[]]@($panel.x, $panel.y, $panel.width, $panel.height)
+    if ($request.image) {
+      $inputStream = [IO.MemoryStream]::new([Convert]::FromBase64String($request.image))
+      try {
+        $image = [Drawing.Bitmap]::new($inputStream)
+        try { $bitmaps = [AkariSurrenderCapture]::Crop($image, $chatBounds, $panelBounds) }
+        finally { $image.Dispose() }
+      } finally { $inputStream.Dispose() }
+    } else {
+      $bitmaps = [AkariSurrenderCapture]::Capture($chatBounds, $panelBounds)
+    }
+    if ($null -eq $bitmaps) {
+      Write-Result @{ id = $request.id; type = 'result'; chatText = ''; panelText = ''; skipped = $true; durationMs = 0 }
+      continue
+    }
+    # Recognize distinct crops from the same capture, with each region's existing preprocessing.
+    $panelText = Read-BitmapText $bitmaps[1] $true
+    $chatText = Read-BitmapText $bitmaps[0] $false
+    Write-Result @{ id = $request.id; type = 'result'; chatText = $chatText; panelText = $panelText; durationMs = $timer.ElapsedMilliseconds; skipped = $false }
   } catch {
     Write-Result @{ id = $request.id; type = 'error'; error = 'ocr-scan-failed' }
   } finally {
-    foreach ($resource in @($writer, $softwareBitmap, $randomAccess, $memory, $prepared, $bitmap)) {
-      if ($null -ne $resource) { $resource.Dispose() }
+    foreach ($bitmap in $bitmaps) {
+      if ($null -ne $bitmap) { $bitmap.Dispose() }
     }
   }
 }

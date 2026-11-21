@@ -123,8 +123,7 @@ titlebar:
       championSwapAutoDecline: 自动拒绝重复交换请求
       autoChampConfig: 自动英雄配置
       autoReply: 自动回复
-      autoSurrender: 自动跟随投降
-      autoAcceptSurrender: 自动接受投降
+      autoSurrender: 自动投降
       scheduledInvitation: 预约邀请好友
       lockOffline: 锁定离线状态
       resetStatusMessage: 登录时重设聊天签名

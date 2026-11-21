@@ -9,7 +9,6 @@ import { shallowReactive } from 'vue'
 
 export const useAutoMiscStore = defineStore('shard:auto-misc-renderer', () => {
   const settings = shallowReactive({
-    autoAcceptSurrenderEnabled: false,
     autoAcceptSurrenderRegion: { ...DEFAULT_AUTO_ACCEPT_SURRENDER_REGION },
     autoSurrenderEnabled: false,
     autoSurrenderRegion: { ...DEFAULT_AUTO_SURRENDER_REGION },
@@ -31,14 +30,10 @@ export const useAutoMiscStore = defineStore('shard:auto-misc-renderer', () => {
     status: 'idle',
     error: null,
     lastText: '',
-    lastScanDurationMs: null
+    lastScanDurationMs: null,
+    followAttempts: 0,
+    acceptAttempts: 0
   })
 
-  const autoAcceptSurrender = shallowReactive<AutoSurrenderSnapshot>({
-    status: 'idle',
-    error: null,
-    lastText: '',
-    lastScanDurationMs: null
-  })
-  return { settings, autoSurrender, autoAcceptSurrender }
+  return { settings, autoSurrender }
 })

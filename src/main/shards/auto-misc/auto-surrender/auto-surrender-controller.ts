@@ -1,11 +1,15 @@
 import {
   AUTO_SURRENDER_GAME_PHASES,
-  type AutoSurrenderError
+  AUTO_SURRENDER_MAX_ATTEMPTS
 } from '@shared/shards/auto-misc/auto-surrender'
 import { compareStructural } from 'mobx'
 
 import type { AutoMiscMainContext } from '../context'
-import { matchesSurrenderMessage } from './match-message'
+import {
+  matchesSurrenderMessage,
+  matchesSurrenderSelection,
+  matchesSurrenderVoteTitle
+} from './match-message'
 import { SurrenderOcrError, type SurrenderOcrExecutor } from './ocr-executor'
 import type { AutoSurrenderState } from './state'
 
@@ -16,10 +20,23 @@ export interface AutoSurrenderDependencies {
   sendSurrender(signal: AbortSignal): Promise<boolean>
 }
 
+interface SurrenderRound {
+  attempts: number
+  confirmed: boolean
+  nextAttemptAt: number
+}
+
+const RETRY_DELAY_MS = 1500
+const REARM_ABSENCE_MS = 3000
+
+/** One worker and input flow coordinate initiation, voting, and screen confirmation. */
 export class AutoSurrenderController {
   private _generation = 0
-  private _attemptedGameId: number | null = null
-  private _attemptError: AutoSurrenderError | null = null
+  private _currentGameId: number | null = null
+  private _follow: SurrenderRound | null = null
+  private _accept: SurrenderRound | null = null
+  private _chatAbsentSince: number | null = null
+  private _panelAbsentSince: number | null = null
   private _timer: ReturnType<typeof setTimeout> | null = null
   private _ocr: ReturnType<AutoSurrenderDependencies['createOcr']> | null = null
   private _abort: AbortController | null = null
@@ -36,19 +53,23 @@ export class AutoSurrenderController {
       () => ({
         active: this._canMonitor(),
         gameId: this._gameId,
-        region: { ...this._context.settings.autoSurrenderRegion }
+        chatRegion: { ...this._context.settings.autoSurrenderRegion },
+        panelRegion: { ...this._context.settings.autoAcceptSurrenderRegion }
       }),
       () => {
         this._stop()
-        this._state.update({ status: 'idle', error: null })
-        if (!this._canMonitor()) return
-        if (this._attemptedGameId === this._gameId) {
-          this._state.update({
-            status: this._attemptError ? 'error' : 'triggered',
-            error: this._attemptError
-          })
-          return
+        if (this._gameId !== null && this._gameId !== this._currentGameId) {
+          this._currentGameId = this._gameId
+          this._follow = null
+          this._accept = null
         }
+        this._state.update({
+          status: 'idle',
+          error: null,
+          followAttempts: this._follow?.attempts ?? 0,
+          acceptAttempts: this._accept?.attempts ?? 0
+        })
+        if (!this._canMonitor()) return
         if (!this._dependencies.isAvailable()) {
           this._state.update({ status: 'unavailable', error: 'native-input-unavailable' })
           return
@@ -99,47 +120,133 @@ export class AutoSurrenderController {
   private async _scan(generation: number) {
     if (!this._isCurrent(generation)) return
     try {
-      const result = await this._ocr!.scan(this._context.settings.autoSurrenderRegion)
-      if (!this._isCurrent(generation)) return
-      this._state.update({
-        status: result.skipped ? 'paused' : 'watching',
-        lastText: result.skipped ? this._state.lastText : result.text,
-        lastScanDurationMs: result.skipped ? this._state.lastScanDurationMs : result.durationMs
+      const frame = await this._ocr!.scan({
+        chat: this._context.settings.autoSurrenderRegion,
+        panel: this._context.settings.autoAcceptSurrenderRegion
       })
-      if (!result.skipped && matchesSurrenderMessage(result.text)) {
-        const foreground = await this._dependencies.isGameForeground()
-        if (!this._isCurrent(generation)) return
-        if (foreground) {
-          // Consume the game before awaiting input: duplicate OCR frames/toggle changes cannot resend.
-          this._attemptedGameId = this._gameId
-          this._ocr?.dispose()
-          this._ocr = null
-          this._context.logger.info('Surrender message detected; sending /ff', {
-            gameId: this._gameId,
-            scanDurationMs: result.durationMs
-          })
-          let sent = false
-          try {
-            sent = await this._dependencies.sendSurrender(this._abort!.signal)
-          } catch (error) {
-            this._context.logger.warn('Auto surrender input failed', error)
+      if (!this._isCurrent(generation)) return
+      if (frame.skipped) {
+        this._pause()
+      } else {
+        this._state.update({
+          lastText: `${frame.chatText}\n${frame.panelText}`.trim(),
+          lastScanDurationMs: frame.durationMs
+        })
+        const selected = matchesSurrenderSelection(frame.panelText)
+        const panelVisible = selected || matchesSurrenderVoteTitle(frame.panelText)
+        const announcement = matchesSurrenderMessage(frame.chatText)
+        this._state.update({ status: 'watching' })
+        this._observe(announcement, panelVisible, selected)
+        // A visible vote takes priority; never let two automations compete for keyboard input.
+        if (panelVisible) {
+          if (!selected && this._accept && !this._accept.confirmed) {
+            await this._attempt(this._accept, 'accept', generation)
           }
-          if (!this._isCurrent(generation)) return
-          this._attemptError = sent ? null : 'send-failed'
-          this._state.update({
-            status: sent ? 'triggered' : 'error',
-            error: this._attemptError
-          })
-          return
+        } else if (this._follow && !this._follow.confirmed) {
+          await this._attempt(this._follow, 'follow', generation)
         }
+        if (!this._isCurrent(generation)) return
+        this._updateStatus()
       }
       if (this._isCurrent(generation)) {
-        // Sequential scans bound CPU usage and never build up a backlog of old frames.
-        this._timer = setTimeout(() => void this._scan(generation), 150)
+        this._timer = setTimeout(() => void this._scan(generation), 250)
       }
     } catch (error) {
       this._fail(generation, error)
     }
+  }
+
+  private _observe(announcement: boolean, panelVisible: boolean, selected: boolean) {
+    const now = Date.now()
+    if (announcement) {
+      if (
+        this._chatAbsentSince !== null &&
+        now - this._chatAbsentSince >= REARM_ABSENCE_MS &&
+        this._follow &&
+        this._isFinished(this._follow)
+      ) {
+        this._follow = null
+      }
+      this._chatAbsentSince = null
+      this._follow ??= { attempts: 0, confirmed: false, nextAttemptAt: 0 }
+    } else {
+      this._chatAbsentSince ??= now
+    }
+    if (panelVisible) {
+      if (this._panelAbsentSince !== null && now - this._panelAbsentSince >= REARM_ABSENCE_MS) {
+        this._accept = null
+      }
+      this._panelAbsentSince = null
+      if (this._follow) this._follow.confirmed = true
+      this._accept ??= { attempts: 0, confirmed: false, nextAttemptAt: 0 }
+      if (selected) this._accept.confirmed = true
+    } else {
+      this._panelAbsentSince ??= now
+    }
+  }
+
+  private async _attempt(round: SurrenderRound, kind: 'follow' | 'accept', generation: number) {
+    if (round.attempts >= AUTO_SURRENDER_MAX_ATTEMPTS || Date.now() < round.nextAttemptAt) return
+    const foreground = await this._dependencies.isGameForeground()
+    if (!this._isCurrent(generation)) return
+    if (!foreground) {
+      this._pause()
+      return
+    }
+    // Count before input, including failures/cancellation, so toggles cannot exceed the cap.
+    round.attempts++
+    this._state.update({
+      followAttempts: this._follow?.attempts ?? 0,
+      acceptAttempts: this._accept?.attempts ?? 0
+    })
+    this._context.logger.info('Automatic surrender attempt', {
+      kind,
+      attempt: round.attempts,
+      gameId: this._gameId
+    })
+    try {
+      await this._dependencies.sendSurrender(this._abort!.signal)
+    } catch (error) {
+      this._context.logger.warn('Automatic surrender input failed', error)
+    } finally {
+      // Native input success is not vote success; wait for a fresh panel recognition.
+      round.nextAttemptAt = Date.now() + RETRY_DELAY_MS
+    }
+  }
+
+  private _isFinished(round: SurrenderRound) {
+    return (
+      round.confirmed ||
+      (round.attempts >= AUTO_SURRENDER_MAX_ATTEMPTS && Date.now() >= round.nextAttemptAt)
+    )
+  }
+
+  private _updateStatus() {
+    // Keep the foreground-loss status set by _attempt until the next valid frame.
+    if (this._state.status === 'paused') return
+    const rounds = [this._follow, this._accept].filter(
+      (round): round is SurrenderRound => round !== null
+    )
+    const exhausted = rounds.some((round) => !round.confirmed && this._isFinished(round))
+    const pending = rounds.some((round) => !this._isFinished(round))
+    this._state.update({
+      followAttempts: this._follow?.attempts ?? 0,
+      acceptAttempts: this._accept?.attempts ?? 0,
+      status: pending
+        ? 'retrying'
+        : exhausted
+          ? 'exhausted'
+          : rounds.length
+            ? 'triggered'
+            : 'watching',
+      error: exhausted ? 'attempts-exhausted' : null
+    })
+  }
+
+  private _pause() {
+    this._chatAbsentSince = null
+    this._panelAbsentSince = null
+    this._state.update({ status: 'paused' })
   }
 
   private _fail(generation: number, error: unknown) {
@@ -160,5 +267,7 @@ export class AutoSurrenderController {
     this._abort = null
     this._ocr?.dispose()
     this._ocr = null
+    this._chatAbsentSince = null
+    this._panelAbsentSince = null
   }
 }

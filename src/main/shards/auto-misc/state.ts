@@ -6,7 +6,6 @@ import {
 import { makeAutoObservable } from 'mobx'
 
 export class AutoMiscSettings {
-  autoAcceptSurrenderEnabled = false
   autoAcceptSurrenderRegion = { ...DEFAULT_AUTO_ACCEPT_SURRENDER_REGION }
 
   autoSurrenderEnabled = false

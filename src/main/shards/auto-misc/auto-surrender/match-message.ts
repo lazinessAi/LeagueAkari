@@ -7,3 +7,8 @@ export function matchesSurrenderMessage(text: string) {
 export function matchesSurrenderVoteTitle(text: string) {
   return /发起投[降的]/u.test(text.normalize('NFKC').replace(/[\s\p{P}\p{Cf}]/gu, ''))
 }
+
+/** The panel replaces the vote buttons/title with the local player's recorded choice. */
+export function matchesSurrenderSelection(text: string) {
+  return /你选择/u.test(text.normalize('NFKC').replace(/[\s\p{P}\p{Cf}]/gu, ''))
+}

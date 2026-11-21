@@ -1,5 +1,5 @@
 // Runtime verification: no key presses and no League Client API mutations.
-// node <this-file> [--vote|--no-vote] <screenshot.png> [another-screenshot.png ...]
+// node <this-file> [--vote|--selection|--no-vote|--pair] <screenshot.png> [another-screenshot.png ...]
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
@@ -8,8 +8,12 @@ import { createInterface } from 'node:readline'
 
 if (process.platform !== 'win32') throw new Error('Windows OCR requires Windows')
 const rejectVote = process.argv.includes('--no-vote')
-const vote = process.argv.includes('--vote') || rejectVote
-const paths = process.argv.slice(2).filter((arg) => arg !== '--vote' && arg !== '--no-vote')
+const selection = process.argv.includes('--selection')
+const pair = process.argv.includes('--pair')
+const vote = process.argv.includes('--vote') || rejectVote || selection
+const paths = process.argv
+  .slice(2)
+  .filter((arg) => !['--vote', '--no-vote', '--selection', '--pair'].includes(arg))
 if (!paths.length) throw new Error('Pass at least one surrender announcement screenshot')
 const script = await readFile(new URL('./ocr-worker.ps1', import.meta.url), 'utf8')
 const images = await Promise.all(
@@ -37,17 +41,23 @@ try {
     if (result.type === 'result') {
       assert.equal(result.id, sequence)
       assert.equal(result.skipped, false)
-      const normalized = result.text.normalize('NFKC').replace(/[\s\p{P}\p{Cf}]/gu, '')
-      if (rejectVote) {
-        assert.doesNotMatch(normalized, /发起投[降的]/u)
-      } else if (vote) {
-        assert.match(normalized, /发起投[降的]/u)
-      } else {
-        assert.match(normalized, /军团同意投降/u)
+      const normalize = (text) => text.normalize('NFKC').replace(/[\s\p{P}\p{Cf}]/gu, '')
+      if (pair || !vote) {
+        assert.match(normalize(result.chatText), /军团同意投降/u)
+      }
+      if (pair || vote) {
+        const panel = normalize(result.panelText)
+        if (selection) {
+          assert.match(panel, /你选择/u)
+        } else if (rejectVote) {
+          assert.doesNotMatch(panel, /发起投[降的]/u)
+        } else {
+          assert.match(panel, /发起投[降的]/u)
+        }
       }
       completed++
       console.log(
-        `Screenshot ${sequence}: ${vote ? 'vote panel' : 'announcement'} recognized in ${result.durationMs} ms`
+        `Screenshot ${sequence}: ${pair ? 'paired regions' : vote ? 'vote panel' : 'announcement'} recognized in ${result.durationMs} ms`
       )
     }
     if (sequence === images.length) {
@@ -57,7 +67,15 @@ try {
         JSON.stringify({
           id: ++sequence,
           image: images[sequence - 1],
-          mode: vote ? 'vote' : 'announcement'
+          regions: pair
+            ? {
+                chat: { x: 0, y: 50, width: 50, height: 50 },
+                panel: { x: 50, y: 50, width: 50, height: 50 }
+              }
+            : {
+                chat: { x: 0, y: 0, width: 100, height: 100 },
+                panel: { x: 0, y: 0, width: 100, height: 100 }
+              }
         }) + '\n'
       )
     }

@@ -972,21 +972,9 @@ const targetDefinitions = [
     descriptionKey: 'automation.misc.autoSurrender.region.description'
   },
   {
-    id: 'automation.misc.auto-accept-surrender',
-    route: { name: 'automation', section: 'misc' },
-    labelKey: 'automation.misc.autoAcceptSurrender.title',
-    descriptionKey: 'automation.misc.autoAcceptSurrender.description'
-  },
-  {
-    id: 'automation.misc.auto-accept-surrender.enabled',
-    route: { name: 'automation', section: 'misc' },
-    parentId: 'automation.misc.auto-accept-surrender',
-    labelKey: 'automation.misc.autoAcceptSurrender.enabled'
-  },
-  {
     id: 'automation.misc.auto-accept-surrender.region',
     route: { name: 'automation', section: 'misc' },
-    parentId: 'automation.misc.auto-accept-surrender',
+    parentId: 'automation.misc.auto-surrender',
     labelKey: 'automation.misc.autoAcceptSurrender.region.label',
     descriptionKey: 'automation.misc.autoAcceptSurrender.region.description'
   },

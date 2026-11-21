@@ -20,6 +20,8 @@ export const autoSurrenderRegionSchema = z
 
 export type AutoSurrenderRegion = z.infer<typeof autoSurrenderRegionSchema>
 
+export const AUTO_SURRENDER_MAX_ATTEMPTS = 5
+
 // Bottom-left quadrant of the game window's client area, independent of DPI/resolution.
 export const DEFAULT_AUTO_SURRENDER_REGION: AutoSurrenderRegion = {
   x: 0,
@@ -37,7 +39,15 @@ export const DEFAULT_AUTO_ACCEPT_SURRENDER_REGION: AutoSurrenderRegion = {
 }
 
 export type AutoSurrenderStatus =
-  'idle' | 'starting' | 'watching' | 'paused' | 'triggered' | 'unavailable' | 'error'
+  | 'idle'
+  | 'starting'
+  | 'watching'
+  | 'paused'
+  | 'triggered'
+  | 'retrying'
+  | 'exhausted'
+  | 'unavailable'
+  | 'error'
 
 export type AutoSurrenderError =
   | 'native-input-unavailable'
@@ -47,10 +57,13 @@ export type AutoSurrenderError =
   | 'ocr-timeout'
   | 'ocr-worker-exited'
   | 'send-failed'
+  | 'attempts-exhausted'
 
 export interface AutoSurrenderSnapshot {
   status: AutoSurrenderStatus
   error: AutoSurrenderError | null
   lastText: string
   lastScanDurationMs: number | null
+  followAttempts: number
+  acceptAttempts: number
 }

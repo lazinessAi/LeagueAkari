@@ -9,9 +9,15 @@ import { createInterface } from 'node:readline'
 import workerScript from './ocr-worker.ps1?raw'
 
 export interface SurrenderOcrResult {
-  text: string
+  chatText: string
+  panelText: string
   durationMs: number
   skipped: boolean
+}
+
+export interface SurrenderOcrRegions {
+  chat: AutoSurrenderRegion
+  panel: AutoSurrenderRegion
 }
 
 export class SurrenderOcrError extends Error {
@@ -88,7 +94,8 @@ export class SurrenderOcrExecutor {
           this._pending = null
           clearTimeout(pending.timeout)
           pending.resolve({
-            text: message.text ?? '',
+            chatText: message.chatText ?? '',
+            panelText: message.panelText ?? '',
             durationMs: message.durationMs ?? 0,
             skipped: message.skipped ?? false
           })
@@ -106,10 +113,7 @@ export class SurrenderOcrExecutor {
     })
   }
 
-  scan(
-    region: AutoSurrenderRegion,
-    mode: 'announcement' | 'vote' = 'announcement'
-  ): Promise<SurrenderOcrResult> {
+  scan(regions: SurrenderOcrRegions): Promise<SurrenderOcrResult> {
     if (process.platform !== 'win32' || !this._process || this._process.exitCode !== null) {
       return Promise.reject(new SurrenderOcrError('ocr-worker-exited'))
     }
@@ -124,7 +128,7 @@ export class SurrenderOcrExecutor {
           this.dispose()
         }, 3000)
       }
-      child.stdin.write(JSON.stringify({ id: ++this._sequence, region, mode }) + '\n', (error) => {
+      child.stdin.write(JSON.stringify({ id: ++this._sequence, regions }) + '\n', (error) => {
         if (error) this._rejectPending('ocr-worker-exited')
       })
     })

@@ -1,10 +1,4 @@
-import {
-  NATIVE_SUPPORT,
-  getPidsByName,
-  isProcessForeground,
-  isProcessRunning,
-  terminateProcess
-} from '@main/native'
+import { NATIVE_SUPPORT, getPidsByName, isProcessForeground, terminateProcess } from '@main/native'
 import { IAkariShardInitDispose, Shard } from '@shared/akari-shard'
 import { GameClientHttpApiAxiosHelper } from '@shared/http-api-axios-helper/game-client'
 import axios from 'axios'
@@ -163,21 +157,11 @@ export class GameClientMain implements IAkariShardInitDispose {
       return false
     }
 
-    if (this._gameClientCachedRunningPids.length === 0) {
-      this._gameClientCachedRunningPids = await getPidsByName(
-        GameClientMain.GAME_CLIENT_PROCESS_NAME
-      )
-    } else {
-      this._gameClientCachedRunningPids = this._gameClientCachedRunningPids.filter((pid) =>
-        isProcessRunning(pid)
-      )
+    if (this._gameClientCachedRunningPids.some((pid) => isProcessForeground(pid))) return true
 
-      if (this._gameClientCachedRunningPids.length === 0) {
-        this._gameClientCachedRunningPids = await getPidsByName(
-          GameClientMain.GAME_CLIENT_PROCESS_NAME
-        )
-      }
-    }
+    // The previous match's PID may remain queryable after exit. Refresh by name on a
+    // foreground miss instead of letting that stale PID hide the next match forever.
+    this._gameClientCachedRunningPids = await getPidsByName(GameClientMain.GAME_CLIENT_PROCESS_NAME)
 
     return this._gameClientCachedRunningPids.some((pid) => isProcessForeground(pid))
   }

@@ -190,29 +190,33 @@ automation:
         noFriends: No friends found
   misc:
     autoSurrender:
-      title: Follow Surrender
+      title: Automatic Surrender
       enabled: Enable
-      description: While the game is in the foreground, recognize the yellow Chinese army surrender announcement in the chat area and immediately send /ff once. Any army name matches; vote counts are ignored. At most one attempt per game. Teammates still need to pass the vote.
+      description: 'While the game is in the foreground, follow Chinese army surrender announcements and accept teammate votes. Check the vote panel after each action: a panel confirms initiation, and the Chinese recorded-choice text confirms voting. Retry unconfirmed actions up to five times each per round. Requires Chinese game text.'
       duration: 'Last recognition: {{ms}} ms'
+      attempts: 'Initiate: {{follow}} / {{max}} · Accept: {{accept}} / {{max}}'
       lastText: Last recognized text
       saved: Chat region saved
       saveFailed: Could not save. Please try again.
       status:
         idle: Waiting for a game
         starting: Preparing recognition
-        watching: Watching for a surrender announcement
+        watching: Watching chat and vote panel
         paused: Recognition paused while the game is in the background
-        triggered: Surrender attempted for this game
+        triggered: Surrender action confirmed
+        retrying: Acting and checking the result
+        exhausted: Attempt limit reached for this round
         unavailable: Automatic input is unavailable
         error: Stopped. Turn off and on to retry.
       errors:
         native-input-unavailable: Automatic input is unavailable. Check administrator privileges and native input support.
         ocr-language-unavailable: Simplified Chinese OCR is unavailable. Install the Simplified Chinese optical character recognition feature in Windows Settings, then turn this feature off and on.
         ocr-initialization-failed: Could not start local recognition. Check Windows PowerShell and system OCR availability.
-        ocr-scan-failed: Chat recognition failed. Make sure the game window is visible, then turn this feature off and on.
+        ocr-scan-failed: Region recognition failed. Make sure the game window is visible, then turn this feature off and on.
         ocr-timeout: Recognition timed out. Turn this feature off and on to retry.
         ocr-worker-exited: Recognition stopped unexpectedly. Turn this feature off and on to retry.
-        send-failed: Input did not finish after this game's surrender attempt. Please act manually.
+        send-failed: Automatic input did not finish. Please act manually.
+        attempts-exhausted: Five attempts completed without screen confirmation for this round. Please act manually.
       region:
         label: Chat Region
         description: Select the area containing complete chat messages. Defaults to the bottom-left quarter of the game window. Adjust after moving chat or changing its font size.
@@ -234,39 +238,18 @@ automation:
         reset: Reset
         save: Save Region
     autoAcceptSurrender:
-      title: 'Auto Accept Surrender'
-      enabled: Enable
-      description: 'While the game is in the foreground, recognize the Chinese surrender vote panel title, then send /ff to vote yes. Attempts must be more than one minute apart; the title does not need to disappear first. Off by default.'
-      duration: 'Last recognition: {{ms}} ms'
-      lastText: Last recognized text
       saved: 'Vote panel region saved'
       saveFailed: Could not save. Please try again.
-      status:
-        idle: Waiting for a game
-        starting: Preparing recognition
-        watching: 'Watching for a surrender vote'
-        paused: Recognition paused while the game is in the background
-        triggered: 'Yes vote attempted for this panel'
-        unavailable: Automatic input is unavailable
-        error: Stopped. Turn off and on to retry.
-      errors:
-        native-input-unavailable: Automatic input is unavailable. Check administrator privileges and native input support.
-        ocr-language-unavailable: Simplified Chinese OCR is unavailable. Install the Simplified Chinese optical character recognition feature in Windows Settings, then turn this feature off and on.
-        ocr-initialization-failed: Could not start local recognition. Check Windows PowerShell and system OCR availability.
-        ocr-scan-failed: 'Vote panel recognition failed. Make sure the game is visible, then turn this feature off and on.'
-        ocr-timeout: Recognition timed out. Turn this feature off and on to retry.
-        ocr-worker-exited: Recognition stopped unexpectedly. Turn this feature off and on to retry.
-        send-failed: 'Automatic input did not finish for this vote. Please act manually.'
       region:
         label: 'Vote Panel Region'
-        description: 'Include the complete Chinese surrender title and avoid the chat area. Defaults to the bottom-right quarter of the game window. Adjust if you moved the panel.'
+        description: 'Include the complete panel, including the surrender title and the Chinese recorded-choice text after voting. Avoid the chat area. Defaults to the bottom-right quarter of the game window. Adjust if you moved the panel.'
         canvasLabel: 'Vote panel recognition region preview. Drag to select or use arrow keys to move the selection.'
         schematic: Game window diagram
         previewHint: Drag outside the selection to redraw. Drag the selection or its corners to move or resize it.
         expand: Enlarge Preview
         precise: Adjust Exact Values
         pickerTitle: 'Select Vote Panel Region'
-        pickerHint: 'Include the complete Chinese surrender title and avoid chat or other game UI.'
+        pickerHint: 'Include the complete vote panel and its recorded-choice text. Avoid chat or other game UI.'
         keyboardHint: Drag to draw, move, or resize at the corners. Arrow keys move the selection; hold Shift for larger steps.
         cancel: Cancel
         confirm: Save Selection

@@ -6,6 +6,8 @@ export class AutoSurrenderState implements AutoSurrenderSnapshot {
   error: AutoSurrenderSnapshot['error'] = null
   lastText = ''
   lastScanDurationMs: number | null = null
+  followAttempts = 0
+  acceptAttempts = 0
 
   constructor() {
     makeAutoObservable(this)
