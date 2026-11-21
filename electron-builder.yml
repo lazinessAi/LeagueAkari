@@ -11,6 +11,7 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json,tsconfig.*.tsbuildinfo}'
   - '!{AGENTS.md,CLAUDE.md,PR_REQUIREMENTS.md}'
   - '!{.agents,.agents/**,.claude,.claude/**,.codex,.codex/**,.mcp.json,opencode.json}'
+  - '!.local{,/**}'
   - '!.playwright-mcp{,/**}'
   - '!.storybook{,/**}'
   - '!bench-results{,/**}'
